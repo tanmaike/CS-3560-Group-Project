@@ -2,7 +2,6 @@ import { useState } from 'react';
 import './App.css';
 
 const Mechanic = () => {
-    // State variables from your original code
     const [name, setName] = useState("Mike Thompson");
     const [mechanicID, setMechanicID] = useState(101);
     const [assignedJobs, setAssignedJobs] = useState([
@@ -20,12 +19,8 @@ const Mechanic = () => {
     const [diagnosisInput, setDiagnosisInput] = useState('');
     const [costInput, setCostInput] = useState('');
 
-    // Record vehicle diagnosis (YOUR TO-DO FUNCTION)
+    // Record vehicle diagnosis
     const recordVehicleDiagnosis = (jobId, diagnosisCode) => {
-        /*
-        ========================== IMPLEMENTED ==========================
-        Function for mechanic to set vehicle diagnosis to vehicle's "vehicleStatusCode"
-        */
         setAssignedJobs(prevJobs =>
             prevJobs.map(job =>
                 job.id === jobId
@@ -38,13 +33,7 @@ const Mechanic = () => {
         setSelectedJob(null);
     };
 
-    // Notify cost (YOUR TO-DO FUNCTION)
     const notifyCost = (jobId, cost) => {
-        /*
-        ========================== IMPLEMENTED ==========================
-        Function for mechanic to send payment to Manager for Manager
-        to add to customer's "paymentsDue"
-        */
         const job = assignedJobs.find(j => j.id === jobId);
         if (job) {
             // This would typically send to a backend/manager API
@@ -79,17 +68,11 @@ const Mechanic = () => {
         setSelectedJob(null);
     };
 
-    // View assigned jobs (YOUR TO-DO FUNCTION)
     const viewAssignedJobs = () => {
         return assignedJobs;
     };
 
-    // Mark job completed (YOUR TO-DO FUNCTION)
     const markJobCompleted = (jobId) => {
-        /*
-        ========================== IMPLEMENTED ==========================
-        Function for mechanic to mark job as complete from "assignedJobs"
-        */
         setAssignedJobs(prevJobs =>
             prevJobs.map(job =>
                 job.id === jobId
