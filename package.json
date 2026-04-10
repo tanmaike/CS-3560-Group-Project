@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:ui": "vite",
+    "dev:api": "node backend/shop_api.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

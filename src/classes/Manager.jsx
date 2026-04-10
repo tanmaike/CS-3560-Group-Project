@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import './App.css'
+import '../App.css'
 
 function Manager() {
-  const [name, setName] = "";
-  const [managerID, setManagerID] = -1;
+  const [name, setName] = useState("");
+  const [managerID, setManagerID] = useState(-1);
 
   const terminateJob = (jobID) => {
     /* 
