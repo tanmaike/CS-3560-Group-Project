@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Mechanic from './classes/Mechanic';
 import Customer from './classes/Customer';
+import Manager from './classes/Manager'
 import './App.css';
 
 function App() {
