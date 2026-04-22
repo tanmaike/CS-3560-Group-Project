@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import '../App.css'
 
 function Job() {
   const [jobID, setJobID] = useState(-1);

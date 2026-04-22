@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import Mechanic from './classes/Mechanic';
 import Customer from './classes/Customer';
-import Manager from './classes/Manager';
 import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [view, setView] = useState('mechanic');
 
   return (
     <div>
@@ -30,4 +29,4 @@ function App() {
   );
 }
 
-export default App
+export default App;
