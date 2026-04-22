@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import './App.css'
 
 function Vehicle() {
   const [vehicleID, setVehicleID] = useState(-1);
