@@ -16,10 +16,15 @@ function App() {
         <button onClick={() => setView('customer')} style={{ marginLeft: '10px' }}>
           Customer Portal
         </button>
+        <button onClick={() => setView('manager')} style={{ marginLeft: '10px' }}>
+          Manager Portal
+        </button>
       </div>
 
       {/* Render Selected View */}
-      {view === 'mechanic' ? <Mechanic /> : <Customer />}
+      {view === 'mechanic' && <Mechanic />}
+      {view === 'customer' && <Customer />}
+      {view === 'manager' && <Manager />}
     </div>
   );
 }
