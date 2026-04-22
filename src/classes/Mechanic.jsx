@@ -118,9 +118,6 @@ const Mechanic = () => {
             <header className="bg-gradient-to-r from-blue-800 to-blue-900 text-white shadow-lg">
                 <div className="container mx-auto px-4 py-4 flex justify-between items-center">
                     <div className="flex items-center space-x-2">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
                         <h1 className="text-2xl font-bold">Mechanic Portal</h1>
                     </div>
                     <div className="flex items-center space-x-3">
