@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const getStatusColor = (status) => {
     switch (status) {
@@ -13,16 +13,8 @@ const getStatusColor = (status) => {
 function Manager() {
     const [manager] = useState({ name: 'Manager', managerID: 1 });
 
-    const [jobs, setJobs] = useState([
-        { jobId: 101, vehicleId: 5001, customerName: 'John Doe',   mechanicId: null, diagnosis: 'Need brake pad replacement', jobQuote: 0,   jobStatus: 'pending'  },
-        { jobId: 102, vehicleId: 5002, customerName: 'Jane Smith', mechanicId: 2,    diagnosis: 'Oil leak',                  jobQuote: 250, jobStatus: 'assigned' },
-    ]);
-
-    const [mechanics, setMechanics] = useState([
-        { mechanicId: 1, name: 'Alex',   assignedJobs: []    },
-        { mechanicId: 2, name: 'Chris',  assignedJobs: [102] },
-        { mechanicId: 3, name: 'Taylor', assignedJobs: []    },
-    ]);
+    const [jobs, setJobs] = useState([]);
+    const [mechanics, setMechanics] = useState([]);
 
     const [activeTab,      setActiveTab]      = useState('active');
     const [searchTerm,     setSearchTerm]     = useState('');
@@ -39,105 +31,90 @@ function Manager() {
         setTimeout(() => setShowNotification(null), 3000);
     }
 
-    function withLoading(fn) {
-        setIsLoading(true);
-        setTimeout(() => { fn(); setIsLoading(false); }, 400);
-    }
+    const loadData = async () => {
+        const [jobsRes, mechsRes] = await Promise.all([
+            fetch('/api/manager/jobs').then((r) => r.json()),
+            fetch('/api/mechanics').then((r) => r.json()),
+        ]);
+        setJobs(jobsRes.jobs);
+        setMechanics(mechsRes.mechanics);
+    };
+
+    useEffect(() => { loadData(); }, []);
 
     // ── logic ──────────────────────────────────────────────────────────────────
 
-    const terminateJob = (jobId) => {
+    const terminateJob = async (jobId) => {
         const parsedJobId = Number(jobId);
         if (!parsedJobId) return;
-        const jobToTerminate = jobs.find((j) => j.jobId === parsedJobId);
-        if (!jobToTerminate) return;
-        withLoading(() => {
-            if (jobToTerminate.mechanicId !== null) {
-                setMechanics((prev) =>
-                    prev.map((m) =>
-                        m.mechanicId === jobToTerminate.mechanicId
-                            ? { ...m, assignedJobs: m.assignedJobs.filter((id) => id !== parsedJobId) }
-                            : m
-                    )
-                );
-            }
-            setJobs((prev) =>
-                prev.map((j) => j.jobId === parsedJobId ? { ...j, jobStatus: 'terminated', mechanicId: null } : j)
-            );
-            setSelectedJobId(null);
-            notify(`Job #${parsedJobId} has been terminated`);
-        });
+        if (!jobs.find((j) => j.jobId === parsedJobId)) return;
+        setIsLoading(true);
+        await fetch(`/api/manager/jobs/${parsedJobId}/terminate`, { method: 'PATCH' });
+        await loadData();
+        setIsLoading(false);
+        setSelectedJobId(null);
+        notify(`Job #${parsedJobId} has been terminated`);
     };
 
-    const recordQuote = (jobId, amount) => {
+    const recordQuote = async (jobId, amount) => {
         const parsedJobId = Number(jobId);
         const parsedAmount = Number(amount);
         if (!parsedJobId || Number.isNaN(parsedAmount) || parsedAmount < 0) return;
-        withLoading(() => {
-            setJobs((prev) =>
-                prev.map((j) =>
-                    j.jobId === parsedJobId ? { ...j, jobQuote: parsedAmount, jobStatus: 'quoted' } : j
-                )
-            );
-            setQuoteJobId(null);
-            setQuoteInput('');
-            notify(`Quote of $${parsedAmount.toFixed(2)} saved for job #${parsedJobId}`);
+        setIsLoading(true);
+        await fetch(`/api/jobs/${parsedJobId}/quote`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount_num: parsedAmount }),
         });
+        await loadData();
+        setIsLoading(false);
+        setQuoteJobId(null);
+        setQuoteInput('');
+        notify(`Quote of $${parsedAmount.toFixed(2)} saved for job #${parsedJobId}`);
     };
 
-    const updateQuote = (jobId, newAmount) => {
+    const updateQuote = async (jobId, newAmount) => {
         const parsedJobId = Number(jobId);
         const parsedAmount = Number(newAmount);
         if (!parsedJobId || Number.isNaN(parsedAmount)) return;
-        setJobs((prev) =>
-            prev.map((j) => j.jobId === parsedJobId ? { ...j, jobQuote: parsedAmount } : j)
-        );
+        await fetch(`/api/jobs/${parsedJobId}/quote`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount_num: parsedAmount }),
+        });
+        await loadData();
     };
 
-    const assignMechanics = (jobId, mechanicId) => {
+    const assignMechanics = async (jobId, mechanicId) => {
         const parsedJobId = Number(jobId);
         const parsedMechanicId = Number(mechanicId);
         if (!parsedJobId || !parsedMechanicId) return;
-        withLoading(() => {
-            setJobs((prev) =>
-                prev.map((j) =>
-                    j.jobId === parsedJobId ? { ...j, mechanicId: parsedMechanicId, jobStatus: 'assigned' } : j
-                )
-            );
-            setMechanics((prev) =>
-                prev.map((m) => {
-                    if (m.mechanicId !== parsedMechanicId) return m;
-                    return {
-                        ...m,
-                        assignedJobs: m.assignedJobs.includes(parsedJobId)
-                            ? m.assignedJobs
-                            : [...m.assignedJobs, parsedJobId],
-                    };
-                })
-            );
-            const mechName = mechanics.find((m) => m.mechanicId === parsedMechanicId)?.name;
-            setAssignJobId(null);
-            setSelectedMechId(null);
-            notify(`${mechName} assigned to job #${parsedJobId}`);
+        const mechName = mechanics.find((m) => m.mechanicId === parsedMechanicId)?.name;
+        setIsLoading(true);
+        await fetch(`/api/manager/jobs/${parsedJobId}/assign`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mechanic_id: parsedMechanicId }),
         });
+        await loadData();
+        setIsLoading(false);
+        setAssignJobId(null);
+        setSelectedMechId(null);
+        notify(`${mechName} assigned to job #${parsedJobId}`);
     };
 
-    const unassignMechanic = (jobId) => {
+    const unassignMechanic = async (jobId) => {
         const job = jobs.find((j) => j.jobId === jobId);
         if (!job || job.mechanicId === null) return;
-        withLoading(() => {
-            setMechanics((prev) =>
-                prev.map((m) =>
-                    m.mechanicId === job.mechanicId
-                        ? { ...m, assignedJobs: m.assignedJobs.filter((id) => id !== jobId) }
-                        : m
-                )
-            );
-            setJobs((prev) =>
-                prev.map((j) => j.jobId === jobId ? { ...j, mechanicId: null, jobStatus: 'pending' } : j)
-            );
-            notify(`Mechanic unassigned from job #${jobId}`);
+        setIsLoading(true);
+        await fetch(`/api/manager/jobs/${jobId}/assign`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mechanic_id: null }),
         });
+        await loadData();
+        setIsLoading(false);
+        notify(`Mechanic unassigned from job #${jobId}`);
     };
 
     // ── derived ────────────────────────────────────────────────────────────────

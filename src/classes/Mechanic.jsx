@@ -1,16 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const Mechanic = () => {
     // State variables
     const [name, setName] = useState("Mike Thompson");
-    const [mechanicID, setMechanicID] = useState(101);
-    const [assignedJobs, setAssignedJobs] = useState([
-        { id: 201, title: "Oil Change", customer: "John Smith", vehicle: "2020 Toyota Camry", status: "pending", priority: "low", vehicleStatusCode: "needs_oil_change", estimatedCost: 49.99 },
-        { id: 202, title: "Brake Pad Replacement", customer: "Sarah Johnson", vehicle: "2019 Honda CR-V", status: "in-progress", priority: "high", vehicleStatusCode: "brake_issue", estimatedCost: 299.99 },
-        { id: 203, title: "Engine Diagnostics", customer: "Robert Brown", vehicle: "2018 Ford F-150", status: "pending", priority: "medium", vehicleStatusCode: "check_engine", estimatedCost: 149.99 },
-        { id: 204, title: "Transmission Fluid Flush", customer: "Emily Davis", vehicle: "2021 Subaru Outback", status: "completed", priority: "low", vehicleStatusCode: "maintenance_due", estimatedCost: 189.99 },
-        { id: 205, title: "Check Engine Light", customer: "David Wilson", vehicle: "2017 BMW 3 Series", status: "pending", priority: "high", vehicleStatusCode: "engine_issue", estimatedCost: 399.99 }
-    ]);
+    const [mechanicID, setMechanicID] = useState(1);
+    const [assignedJobs, setAssignedJobs] = useState([]);
 
     // UI State
     const [filter, setFilter] = useState('all');
@@ -22,90 +16,78 @@ const Mechanic = () => {
     const [activeTab, setActiveTab] = useState('active');
     const [isLoading, setIsLoading] = useState(false);
 
-    // Show auto-hiding notification
+    const loadJobs = () =>
+        fetch(`/api/jobs?mechanic_id=${mechanicID}`)
+            .then((r) => r.json())
+            .then((data) =>
+                setAssignedJobs(data.jobs.map((j) => ({
+                    id:               j.job_id,
+                    title:            j.title_txt,
+                    customer:         j.customer_nm,
+                    vehicle:          j.vehicle_txt,
+                    status:           j.status_txt,
+                    priority:         j.priority_txt,
+                    vehicleStatusCode: j.diag_code,
+                    estimatedCost:    j.est_cost,
+                    notifiedCost:     j.quote_at ? j.est_cost : null,
+                    diagnosisRecorded: j.diag_at ? new Date(j.diag_at).toLocaleString() : null,
+                    completedAt:      j.completed_at ? new Date(j.completed_at).toLocaleString() : null,
+                })))
+            );
+
+    useEffect(() => { loadJobs(); }, []);
+
     const showMessage = (message, type = 'success') => {
         setShowNotification({ message, type });
         setTimeout(() => setShowNotification(null), 3000);
     };
 
-    // Record vehicle diagnosis
     const recordVehicleDiagnosis = async (jobId, diagnosisCode) => {
         if (!diagnosisCode.trim()) {
             showMessage('Please enter a diagnosis code', 'error');
             return;
         }
-
         setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            setAssignedJobs(prevJobs =>
-                prevJobs.map(job =>
-                    job.id === jobId
-                        ? { ...job, vehicleStatusCode: diagnosisCode, diagnosisRecorded: new Date().toLocaleString() }
-                        : job
-                )
-            );
-            setIsLoading(false);
-            setDiagnosisInput('');
-            setSelectedJob(null);
-            showMessage(`Diagnosis recorded for job #${jobId}`, 'success');
-        }, 500);
+        await fetch(`/api/jobs/${jobId}/diagnosis`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ diag_code: diagnosisCode, diag_note: diagnosisCode }),
+        });
+        await loadJobs();
+        setIsLoading(false);
+        setDiagnosisInput('');
+        setSelectedJob(null);
+        showMessage(`Diagnosis recorded for job #${jobId}`, 'success');
     };
 
-    // Notify cost to manager
     const notifyCost = async (jobId, cost) => {
         if (!cost || cost <= 0) {
             showMessage('Please enter a valid cost amount', 'error');
             return;
         }
-
         setIsLoading(true);
-        const job = assignedJobs.find(j => j.id === jobId);
-
-        setTimeout(() => {
-            const notification = {
-                jobId: job.id,
-                customer: job.customer,
-                vehicle: job.vehicle,
-                cost: parseFloat(cost),
-                mechanicId: mechanicID,
-                mechanicName: name,
-                timestamp: new Date().toISOString()
-            };
-
-            const pendingNotifications = JSON.parse(localStorage.getItem('pendingCostNotifications') || '[]');
-            pendingNotifications.push(notification);
-            localStorage.setItem('pendingCostNotifications', JSON.stringify(pendingNotifications));
-
-            setAssignedJobs(prevJobs =>
-                prevJobs.map(job =>
-                    job.id === jobId
-                        ? { ...job, notifiedCost: parseFloat(cost), costNotifiedAt: new Date().toLocaleString() }
-                        : job
-                )
-            );
-
-            setIsLoading(false);
-            setCostInput('');
-            setSelectedJob(null);
-            showMessage(`$${cost} cost notification sent to Manager`, 'success');
-        }, 500);
+        await fetch(`/api/jobs/${jobId}/quote`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount_num: parseFloat(cost) }),
+        });
+        await loadJobs();
+        setIsLoading(false);
+        setCostInput('');
+        setSelectedJob(null);
+        showMessage(`$${cost} cost notification sent to Manager`, 'success');
     };
 
-    // Mark job completed
     const markJobCompleted = async (jobId) => {
         setIsLoading(true);
-        setTimeout(() => {
-            setAssignedJobs(prevJobs =>
-                prevJobs.map(job =>
-                    job.id === jobId
-                        ? { ...job, status: "completed", completedAt: new Date().toLocaleString() }
-                        : job
-                )
-            );
-            setIsLoading(false);
-            showMessage(`Job #${jobId} marked as completed!`, 'success');
-        }, 500);
+        await fetch(`/api/jobs/${jobId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status_txt: 'completed' }),
+        });
+        await loadJobs();
+        setIsLoading(false);
+        showMessage(`Job #${jobId} marked as completed!`, 'success');
     };
 
     // Get filtered jobs based on active tab

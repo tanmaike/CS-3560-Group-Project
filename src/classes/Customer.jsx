@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import '../App.css';
 
 const Customer = () => {
@@ -7,54 +7,22 @@ const Customer = () => {
   const [insurancePolicyID, setInsurancePolicyID] = useState(900145);
   const [paymentsDue, setPaymentsDue] = useState(249.99);
 
-  const [vehicles, setVehicles] = useState([
-    {
-      id: 1,
-      year: 2021,
-      make: "Toyota",
-      model: "Corolla",
-      plate: "ABC-123",
-      status: "In Service",
-      issue: "Brake inspection",
-      appointment: "2026-04-12 10:00 AM"
-    },
-    {
-      id: 2,
-      year: 2018,
-      make: "Honda",
-      model: "Civic",
-      plate: "XYZ-789",
-      status: "Ready for Pickup",
-      issue: "Oil change",
-      appointment: "2026-04-09 2:30 PM"
-    }
-  ]);
+  const [vehicles, setVehicles] = useState([]);
 
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [serviceRequests, setServiceRequests] = useState([
-    {
-      id: 501,
-      vehicle: "2021 Toyota Corolla",
-      request: "Brake inspection",
-      status: "pending",
-      estimatedCost: 180.00
-    },
-    {
-      id: 502,
-      vehicle: "2018 Honda Civic",
-      request: "Oil change",
-      status: "completed",
-      estimatedCost: 59.99
-    },
-    {
-      id: 503,
-      vehicle: "2021 Toyota Corolla",
-      request: "Tire rotation",
-      status: "in-progress",
-      estimatedCost: 40.00
-    }
-  ]);
+  const [serviceRequests, setServiceRequests] = useState([]);
+
+  const loadCustomerData = () =>
+    Promise.all([
+      fetch(`/api/customers/${customerID}/vehicles`).then((r) => r.json()),
+      fetch(`/api/customers/${customerID}/service-requests`).then((r) => r.json()),
+    ]).then(([vData, srData]) => {
+      setVehicles(vData.vehicles);
+      setServiceRequests(srData.requests);
+    });
+
+  useEffect(() => { loadCustomerData(); }, []);
 
   const createProfile = () => {
     setName("Anthony DiDio");
@@ -67,17 +35,11 @@ const Customer = () => {
   };
 
   const linkVehicle = () => {
-    const newVehicle = {
-      id: vehicles.length + 1,
-      year: 2020,
-      make: "Subaru",
-      model: "Outback",
-      plate: "NEW-456",
-      status: "No Active Service",
-      issue: "None",
-      appointment: "No appointment scheduled"
-    };
-    setVehicles(prev => [...prev, newVehicle]);
+    fetch(`/api/customers/${customerID}/vehicles`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ year_num: 2020, make_txt: 'Subaru', model_txt: 'Outback', plate_txt: 'NEW-456', status_txt: 'No Active Service', issue_txt: 'None', appointment_txt: 'No appointment scheduled' }),
+    }).then(() => loadCustomerData());
   };
 
   const viewVehicleStatus = (vehicleId) => {
@@ -92,14 +54,11 @@ const Customer = () => {
   };
 
   const recordIssueRequest = () => {
-    const newRequest = {
-      id: serviceRequests.length + 501,
-      vehicle: "2021 Toyota Corolla",
-      request: "Customer-reported issue",
-      status: "pending",
-      estimatedCost: 120.00
-    };
-    setServiceRequests(prev => [newRequest, ...prev]);
+    fetch(`/api/customers/${customerID}/service-requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vehicle_txt: '2021 Toyota Corolla', issue_txt: 'Customer-reported issue', est_cost: 120.00 }),
+    }).then(() => loadCustomerData());
   };
 
   const makePayment = (money) => {
