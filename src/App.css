@@ -1,35 +1,126 @@
-#root {
-  max-width: 1280px;
+/* src/App.css - App component styles */
+
+/* App Container */
+.app-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--bg-light-gray) 0%, var(--bg-white) 100%);
+}
+
+/* App Header - AutoZone Style */
+.app-header {
+  background-color: var(--bg-dark-gray);
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 2px solid var(--accent-red);
+}
+
+.app-header-content {
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
-.card {
-  padding: 2rem;
-  border: 1px solid #e0e0e0;
+/* Brand Section */
+.brand-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-text {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-red));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 1px;
+}
+
+.brand-tagline {
+  font-size: 11px;
+  color: var(--text-light);
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Portal Navigation Buttons */
+.portal-nav {
+  display: flex;
+  gap: 12px;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 6px;
+  border-radius: 12px;
+}
+
+.portal-nav-btn {
+  padding: 10px 24px;
+  background: transparent;
+  color: white;
+  border: none;
   border-radius: 8px;
-  margin-bottom: 1rem;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.hero {
-  text-align: center;
-  margin-bottom: 2rem;
+.portal-nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
 }
 
-.hero h1 {
-  color: var(--accent-red);
+.portal-nav-btn.active {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-red));
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 255, 255, 0.3);
 }
 
-.cta-button {
-  background-color: var(--accent-red);
-  color: #000000;
-  padding: 0.75rem 1.5rem;
-  font-size: 1.1rem;
-  border-radius: 4px;
-  margin: 0.5rem;
+.portal-nav-btn.active:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 255, 255, 0.4);
 }
 
-.danger-button {
-  background-color: var(--accent-red);
-  color: #ffffff;
+/* Responsive App Header */
+@media (max-width: 768px) {
+  .app-header-content {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+  }
+  
+  .brand-section {
+    align-items: center;
+  }
+  
+  .portal-nav {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .portal-nav-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .portal-nav {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .portal-nav-btn {
+    width: 100%;
+  }
 }

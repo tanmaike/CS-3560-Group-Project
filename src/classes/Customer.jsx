@@ -1,26 +1,32 @@
 import { useState, useEffect } from 'react';
-import '../App.css';
+import './Customer.css';
 
 const Customer = () => {
   const [name, setName] = useState("Anthony DiDio");
   const [customerID] = useState(301);
   const [insurancePolicyID, setInsurancePolicyID] = useState(900145);
   const [paymentsDue, setPaymentsDue] = useState(249.99);
-
   const [vehicles, setVehicles] = useState([]);
-
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceRequests, setServiceRequests] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const loadCustomerData = () =>
-    Promise.all([
-      fetch(`/api/customers/${customerID}/vehicles`).then((r) => r.json()),
-      fetch(`/api/customers/${customerID}/service-requests`).then((r) => r.json()),
-    ]).then(([vData, srData]) => {
-      setVehicles(vData.vehicles);
-      setServiceRequests(srData.requests);
-    });
+  const loadCustomerData = async () => {
+    setLoading(true);
+    try {
+      const [vData, srData] = await Promise.all([
+        fetch(`/api/customers/${customerID}/vehicles`).then((r) => r.json()),
+        fetch(`/api/customers/${customerID}/service-requests`).then((r) => r.json()),
+      ]);
+      setVehicles(vData.vehicles || []);
+      setServiceRequests(srData.requests || []);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => { loadCustomerData(); }, []);
 
@@ -38,7 +44,15 @@ const Customer = () => {
     fetch(`/api/customers/${customerID}/vehicles`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ year_num: 2020, make_txt: 'Subaru', model_txt: 'Outback', plate_txt: 'NEW-456', status_txt: 'No Active Service', issue_txt: 'None', appointment_txt: 'No appointment scheduled' }),
+      body: JSON.stringify({ 
+        year_num: 2020, 
+        make_txt: 'Subaru', 
+        model_txt: 'Outback', 
+        plate_txt: 'NEW-456', 
+        status_txt: 'No Active Service', 
+        issue_txt: 'None', 
+        appointment_txt: 'No appointment scheduled' 
+      }),
     }).then(() => loadCustomerData());
   };
 
@@ -57,7 +71,11 @@ const Customer = () => {
     fetch(`/api/customers/${customerID}/service-requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vehicle_txt: '2021 Toyota Corolla', issue_txt: 'Customer-reported issue', est_cost: 120.00 }),
+      body: JSON.stringify({ 
+        vehicle_txt: '2021 Toyota Corolla', 
+        issue_txt: 'Customer-reported issue', 
+        est_cost: 120.00 
+      }),
     }).then(() => loadCustomerData());
   };
 
@@ -67,19 +85,16 @@ const Customer = () => {
 
   const getFilteredRequests = () => {
     let filtered = serviceRequests;
-
     if (filter !== 'all') {
       filtered = filtered.filter(req => req.status === filter);
     }
-
     if (searchTerm) {
       filtered = filtered.filter(req =>
-        req.vehicle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        req.request.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        req.status.toLowerCase().includes(searchTerm.toLowerCase())
+        req.vehicle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        req.request?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        req.status?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
     return filtered;
   };
 
@@ -92,202 +107,197 @@ const Customer = () => {
 
   const filteredRequests = getFilteredRequests();
 
+  if (loading) {
+    return (
+      <div className="customer-portal">
+        <div className="main-content" style={{ textAlign: 'center', padding: '60px' }}>
+          <div className="loading-spinner">Loading your data...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-gradient-to-r from-blue-800 to-blue-900 text-white shadow-lg">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-bold">Customer Portal</h1>
+    <div className="customer-portal">
+      {/* Customer Info Header - Below App Navigation */}
+      <div className="customer-info-header">
+        <div className="customer-info-content">
+          <div className="customer-greeting">
+            <h1 className="welcome-text">Welcome back, {name}!</h1>
+            <p className="customer-id-text">Customer ID: {customerID}</p>
           </div>
-
-          <div className="flex items-center space-x-3">
-            <div className="text-right">
-              <p className="font-semibold">{name}</p>
-              <p className="text-xs text-blue-200">Customer ID: {customerID}</p>
+          <div className="customer-stats-mini">
+            <div className="mini-stat">
+              <span className="mini-stat-label">Insurance Policy</span>
+              <span className="mini-stat-value">{insurancePolicyID}</span>
             </div>
-            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white">
-              {name.charAt(0)}
+            <div className="mini-stat">
+              <span className="mini-stat-label">Balance Due</span>
+              <span className="mini-stat-value" style={{ color: 'var(--accent-red)' }}>
+                ${paymentsDue.toFixed(2)}
+              </span>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
-            <p className="text-gray-500 text-sm font-medium">Vehicles</p>
-            <p className="text-3xl font-bold mt-2">{stats.vehicles}</p>
+      {/* Main Content */}
+      <div className="main-content">
+        {/* Stats Summary Cards */}
+        <div className="stats-container">
+          <table className="stats-table">
+            <thead>
+              <tr>
+                <th>Vehicles</th>
+                <th>Active Requests</th>
+                <th>Completed</th>
+                <th>Balance Due</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="stat-number">{stats.vehicles}</td>
+                <td className="stat-number">{stats.activeRequests}</td>
+                <td className="stat-number">{stats.completedRequests}</td>
+                <td className="stat-number stat-balance">${stats.balance.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="action-bar">
+          <button className="btn btn-primary" onClick={createProfile}>Create Profile</button>
+          <button className="btn btn-secondary" onClick={updateInfo}>Update Info</button>
+          <button className="btn btn-primary" onClick={linkVehicle}>Link Vehicle</button>
+          <button className="btn btn-secondary" onClick={linkInsurance}>Link Insurance</button>
+          <button className="btn btn-primary" onClick={recordIssueRequest}>Request Service</button>
+          <button className="btn btn-danger" onClick={() => makePayment(50)}>Pay $50</button>
+        </div>
+
+        {/* Filter and Search Bar */}
+        <div className="filter-bar">
+          <div className="filter-group">
+            <button className={`filter-option ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</button>
+            <button className={`filter-option ${filter === 'pending' ? 'active' : ''}`} onClick={() => setFilter('pending')}>Pending</button>
+            <button className={`filter-option ${filter === 'in-progress' ? 'active' : ''}`} onClick={() => setFilter('in-progress')}>In Progress</button>
+            <button className={`filter-option ${filter === 'completed' ? 'active' : ''}`} onClick={() => setFilter('completed')}>Completed</button>
           </div>
-
-          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500">
-            <p className="text-gray-500 text-sm font-medium">Active Requests</p>
-            <p className="text-3xl font-bold mt-2">{stats.activeRequests}</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
-            <p className="text-gray-500 text-sm font-medium">Completed</p>
-            <p className="text-3xl font-bold mt-2">{stats.completedRequests}</p>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-500">
-            <p className="text-gray-500 text-sm font-medium">Balance Due</p>
-            <p className="text-3xl font-bold mt-2">${stats.balance.toFixed(2)}</p>
+          <div className="search-group">
+            <input 
+              type="text" 
+              className="search-input" 
+              placeholder="Search requests..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="flex space-x-2">
-              {['all', 'pending', 'in-progress', 'completed'].map((filterOption) => (
-                <button
-                  key={filterOption}
-                  onClick={() => setFilter(filterOption)}
-                  className={`px-4 py-2 rounded-md transition-colors ${
-                    filter === filterOption
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
-                </button>
+        {/* Vehicles Table */}
+        <div className="table-container">
+          <h2 className="section-title">My Vehicles</h2>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Make</th>
+                <th>Model</th>
+                <th>Plate</th>
+                <th>Status</th>
+                <th>Issue</th>
+                <th>Appointment</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {vehicles.map(vehicle => (
+                <tr key={vehicle.id}>
+                  <td>{vehicle.year}</td>
+                  <td>{vehicle.make}</td>
+                  <td>{vehicle.model}</td>
+                  <td>{vehicle.plate}</td>
+                  <td>{vehicle.status}</td>
+                  <td>{vehicle.issue || '—'}</td>
+                  <td>{vehicle.appointment || '—'}</td>
+                  <td className="action-cell">
+                    <button className="btn-sm" onClick={() => viewVehicleStatus(vehicle.id)}>View</button>
+                  </td>
+                </tr>
               ))}
-            </div>
-
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search requests..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-4 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-80"
-              />
-            </div>
-          </div>
+              {vehicles.length === 0 && (
+                <tr>
+                  <td colSpan="8" className="empty-row">No vehicles found</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Customer Actions</h2>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={createProfile}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            >
-              Create Profile
-            </button>
-            <button
-              onClick={updateInfo}
-              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
-            >
-              Update Info
-            </button>
-            <button
-              onClick={linkVehicle}
-              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"
-            >
-              Link Vehicle
-            </button>
-            <button
-              onClick={linkInsurance}
-              className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700"
-            >
-              Link Insurance
-            </button>
-            <button
-              onClick={recordIssueRequest}
-              className="bg-orange-600 text-white px-4 py-2 rounded-md hover:bg-orange-700"
-            >
-              Request Service
-            </button>
-            <button
-              onClick={() => makePayment(50)}
-              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700"
-            >
-              Pay $50
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-10">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">My Vehicles</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {vehicles.map(vehicle => (
-              <div key={vehicle.id} className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  {vehicle.year} {vehicle.make} {vehicle.model}
-                </h3>
-                <p className="text-sm text-gray-500 mb-3">Plate: {vehicle.plate}</p>
-                <div className="space-y-2 mb-4">
-                  <p className="text-sm text-gray-600">Status: {vehicle.status}</p>
-                  <p className="text-sm text-gray-600">Issue: {vehicle.issue}</p>
-                  <p className="text-sm text-gray-600">Appointment: {vehicle.appointment}</p>
-                </div>
-                <button
-                  onClick={() => viewVehicleStatus(vehicle.id)}
-                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                >
-                  View Status
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Service Requests</h2>
-          {filteredRequests.length === 0 ? (
-            <div className="bg-white rounded-lg shadow-md p-12 text-center">
-              <p className="text-gray-500 text-lg">No matching service requests</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Service Requests Table */}
+        <div className="table-container">
+          <h2 className="section-title">Service Requests</h2>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Request</th>
+                <th>Vehicle</th>
+                <th>Status</th>
+                <th>Estimated Cost</th>
+                <th>Insurance Policy</th>
+              </tr>
+            </thead>
+            <tbody>
               {filteredRequests.map(request => (
-                <div key={request.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">{request.request}</h3>
-                      <p className="text-sm text-gray-500">{request.vehicle}</p>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      request.status === 'completed'
-                        ? 'bg-green-100 text-green-800'
-                        : request.status === 'in-progress'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
+                <tr key={request.id}>
+                  <td>{request.request}</td>
+                  <td>{request.vehicle}</td>
+                  <td>
+                    <span className={`status-badge status-${request.status.toLowerCase().replace(' ', '-')}`}>
                       {request.status}
                     </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-600">Estimated Cost: ${request.estimatedCost.toFixed(2)}</p>
-                    <p className="text-sm text-gray-600">Insurance Policy: {insurancePolicyID}</p>
-                  </div>
-                </div>
+                  </td>
+                  <td>${request.estimatedCost?.toFixed(2) || '0.00'}</td>
+                  <td>{insurancePolicyID}</td>
+                </tr>
               ))}
-            </div>
-          )}
+              {filteredRequests.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="empty-row">No matching service requests</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
+        {/* Recent History Table */}
         {serviceRequests.some(r => r.status === 'completed') && (
-          <div className="mt-12">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">Recent History</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {serviceRequests
-                .filter(r => r.status === 'completed')
-                .slice(0, 2)
-                .map(request => (
-                  <div key={request.id} className="bg-gray-50 rounded-lg shadow-md p-6 opacity-80">
-                    <h3 className="text-lg font-semibold text-gray-800">{request.request}</h3>
-                    <p className="text-sm text-gray-500">{request.vehicle}</p>
-                    <p className="text-sm text-gray-600 mt-2">
-                      Final Cost: ${request.estimatedCost.toFixed(2)}
-                    </p>
-                  </div>
-                ))}
-            </div>
+          <div className="table-container">
+            <h2 className="section-title">Recent History</h2>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Request</th>
+                  <th>Vehicle</th>
+                  <th>Final Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                {serviceRequests
+                  .filter(r => r.status === 'completed')
+                  .slice(0, 2)
+                  .map(request => (
+                    <tr key={request.id}>
+                      <td>{request.request}</td>
+                      <td>{request.vehicle}</td>
+                      <td>${request.estimatedCost?.toFixed(2) || '0.00'}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 };
