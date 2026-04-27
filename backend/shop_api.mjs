@@ -198,6 +198,26 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     }
   }
 
+  const cust_match = path_txt.match(/^\/api\/customers\/(\d+)$/)
+  if (cust_match && method_txt === 'GET') {
+    const cust_id = Number(cust_match[1])
+    const row = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
+    if (!row) {
+      send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
+      return
+    }
+    send_json(res_obj, 200, {
+      ok: true,
+      customer: {
+        id: row.customer_id,
+        name: row.name_txt,
+        insuranceId: row.insurance_id,
+        paymentsDue: row.payments_due,
+      },
+    })
+    return
+  }
+
   const cust_sr_match = path_txt.match(/^\/api\/customers\/(\d+)\/service-requests$/)
   if (cust_sr_match) {
     const cust_id = Number(cust_sr_match[1])
