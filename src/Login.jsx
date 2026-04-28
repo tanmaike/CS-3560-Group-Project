@@ -1,6 +1,6 @@
-// Login.jsx
 import { useState } from 'react';
 import './Login.css';
+
 
 const PORTALS = {
   customer: {
@@ -55,9 +55,9 @@ function Login({ onLogin }) {
   return (
     <div className="login-page">
       <header className="login-app-header">
-        <div className="login-brand">
-          <span className="brand-name">Mechanic Shop</span>
-          <span className="brand-tagline">Professional Mechanical Service</span>
+        <div className="brand-section login-brand">
+          <span className="brand-text">AutoCare</span>
+          <span className="brand-tagline">Professional Auto Service</span>
         </div>
       </header>
 
@@ -112,7 +112,10 @@ function Login({ onLogin }) {
               />
             </div>
 
-        
+            <div className="login-row">
+              <button type="button" className="login-forgot">Forgot password?</button>
+            </div>
+
             <button
               type="submit"
               className={`login-submit login-submit--${activePortal}`}
