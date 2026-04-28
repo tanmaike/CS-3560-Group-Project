@@ -1,51 +1,49 @@
 // App.jsx
 import { useState } from 'react';
+import Login from './Login';
 import Mechanic from './classes/Mechanic';
 import Customer from './classes/Customer';
 import Manager from './classes/Manager';
 import './App.css';
 
+const PORTAL_LABELS = {
+  customer: 'Customer Portal',
+  manager:  'Management Portal',
+  mechanic: 'Mechanic Portal',
+};
+
 function App() {
-  const [view, setView] = useState('mechanic');
+  const [loggedInAs, setLoggedInAs] = useState(null);
+
+  const handleLogin = (portalKey) => setLoggedInAs(portalKey);
+  const handleLogout = () => setLoggedInAs(null);
+
+  if (!loggedInAs) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
     <div className="app-container">
-      {/* AutoZone-style Header */}
       <div className="app-header">
         <div className="app-header-content">
           <div className="brand-section">
-            <span className="brand-text">AutoCare</span>
-            <span className="brand-tagline">Professional Auto Service</span>
+            <span className="brand-text">Mechanic Shop</span>
+            <span className="brand-tagline">Professional Mechanical Service</span>
           </div>
-          
-          {/* Portal Navigation Buttons */}
-          <div className="portal-nav">
-            <button 
-              className={`portal-nav-btn ${view === 'mechanic' ? 'active' : ''}`}
-              onClick={() => setView('mechanic')}
-            >
-              Mechanic Portal
-            </button>
-            <button 
-              className={`portal-nav-btn ${view === 'customer' ? 'active' : ''}`}
-              onClick={() => setView('customer')}
-            >
-              Customer Portal
-            </button>
-            <button 
-              className={`portal-nav-btn ${view === 'manager' ? 'active' : ''}`}
-              onClick={() => setView('manager')}
-            >
-              Manager Portal
-            </button>
+
+          <div className="portal-label">
+            {PORTAL_LABELS[loggedInAs]}
           </div>
+
+          <button className="logout-btn" onClick={handleLogout}>
+            Sign Out
+          </button>
         </div>
       </div>
 
-      {/* Render Selected View */}
-      {view === 'mechanic' && <Mechanic />}
-      {view === 'customer' && <Customer />}
-      {view === 'manager' && <Manager />}
+      {loggedInAs === 'mechanic' && <Mechanic />}
+      {loggedInAs === 'customer' && <Customer />}
+      {loggedInAs === 'manager'  && <Manager />}
     </div>
   );
 }

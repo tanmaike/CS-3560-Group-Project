@@ -6,7 +6,7 @@
   background: linear-gradient(135deg, var(--bg-light-gray) 0%, var(--bg-white) 100%);
 }
 
-/* App Header - AutoZone Style */
+/* App Header  */
 .app-header {
   background-color: var(--bg-dark-gray);
   box-shadow: var(--shadow-md);
@@ -89,7 +89,7 @@
   box-shadow: 0 4px 12px rgba(0, 255, 255, 0.4);
 }
 
-/* Responsive App Header */
+/* App Header */
 @media (max-width: 768px) {
   .app-header-content {
     flex-direction: column;
@@ -123,4 +123,31 @@
   .portal-nav-btn {
     width: 100%;
   }
+}
+/* ── Sign Out button ── */
+.logout-btn {
+  background: none;
+  border: 0.5px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+
+.logout-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+/* ── Active portal label in header ── */
+.portal-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.5px;
 }
