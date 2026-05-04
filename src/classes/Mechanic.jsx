@@ -2,10 +2,10 @@
 import { useState, useEffect } from 'react';
 import './Mechanic.css';
 
-const Mechanic = () => {
+const Mechanic = ({ mechanicId = 1 }) => {
     // State variables
-    const [name, setName] = useState("Mike Thompson");
-    const [mechanicID, setMechanicID] = useState(1);
+    const [name, setName] = useState("");
+    const [mechanicID, setMechanicID] = useState(mechanicId);
     const [assignedJobs, setAssignedJobs] = useState([]);
 
     // UI State
@@ -37,7 +37,24 @@ const Mechanic = () => {
                 })))
             );
 
-    useEffect(() => { loadJobs(); }, []);
+    // Load mechanic info and jobs on mount
+    useEffect(() => {
+        setMechanicID(mechanicId);
+
+        // Load mechanic name
+        fetch('/api/mechanics')
+            .then(r => r.json())
+            .then(data => {
+                const mech = (data.mechanics || []).find(m => m.mechanicId === mechanicId);
+                if (mech) {
+                    setName(mech.name);
+                }
+            })
+            .catch(err => console.error('Error loading mechanic info:', err));
+
+        // Load jobs
+        loadJobs();
+    }, [mechanicId]);
 
     const showMessage = (message, type = 'success') => {
         setShowNotification({ message, type });
@@ -87,6 +104,12 @@ const Mechanic = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status_txt: 'completed' }),
         });
+
+        // Sync completion to customer's service request
+        await fetch(`/api/jobs/${jobId}/sync-to-request`, {
+            method: 'PATCH',
+        });
+
         await loadJobs();
         setIsLoading(false);
         showMessage(`Job #${jobId} marked as completed!`, 'success');
@@ -132,6 +155,16 @@ const Mechanic = () => {
             default: return { bg: '#e8f5e9', text: '#4caf50', border: '#c8e6c9' };
         }
     };
+
+    if (!name) {
+        return (
+            <div className="mechanic-portal">
+                <div className="mechanic-main-content" style={{ textAlign: 'center', padding: '60px' }}>
+                    <div className="loading-spinner">Loading mechanic profile...</div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="mechanic-portal">

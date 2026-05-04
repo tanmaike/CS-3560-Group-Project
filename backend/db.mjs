@@ -1,3 +1,4 @@
+// db.mjs
 import Database from 'better-sqlite3'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -9,18 +10,18 @@ db.pragma('journal_mode = WAL')
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS mechanics (
-    mechanic_id INTEGER PRIMARY KEY,
-    name_txt    TEXT NOT NULL
+                                         mechanic_id INTEGER PRIMARY KEY,
+                                         name_txt    TEXT NOT NULL
   );
   CREATE TABLE IF NOT EXISTS customers (
-    customer_id  INTEGER PRIMARY KEY,
-    name_txt     TEXT NOT NULL,
-    insurance_id INTEGER DEFAULT 0,
-    payments_due REAL    DEFAULT 0
+                                         customer_id  INTEGER PRIMARY KEY,
+                                         name_txt     TEXT NOT NULL,
+                                         insurance_id INTEGER DEFAULT 0,
+                                         payments_due REAL    DEFAULT 0
   );
   CREATE TABLE IF NOT EXISTS vehicles (
-    vehicle_id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    customer_id     INTEGER REFERENCES customers(customer_id),
+                                        vehicle_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        customer_id     INTEGER REFERENCES customers(customer_id),
     year_num        INTEGER,
     make_txt        TEXT,
     model_txt       TEXT,
@@ -28,13 +29,13 @@ db.exec(`
     status_txt      TEXT DEFAULT 'No Active Service',
     issue_txt       TEXT DEFAULT 'None',
     appointment_txt TEXT DEFAULT 'No appointment scheduled'
-  );
+    );
   CREATE TABLE IF NOT EXISTS jobs (
-    job_id       INTEGER PRIMARY KEY AUTOINCREMENT,
-    title_txt    TEXT NOT NULL,
-    customer_nm  TEXT,
-    vehicle_txt  TEXT,
-    vehicle_id   INTEGER REFERENCES vehicles(vehicle_id),
+                                    job_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    title_txt    TEXT NOT NULL,
+                                    customer_nm  TEXT,
+                                    vehicle_txt  TEXT,
+                                    vehicle_id   INTEGER REFERENCES vehicles(vehicle_id),
     mechanic_id  INTEGER REFERENCES mechanics(mechanic_id),
     status_txt   TEXT DEFAULT 'pending',
     priority_txt TEXT DEFAULT 'medium',
@@ -45,26 +46,34 @@ db.exec(`
     quote_at     TEXT,
     updated_at   TEXT,
     completed_at TEXT
-  );
+    );
   CREATE TABLE IF NOT EXISTS cost_pings (
-    ping_id     INTEGER PRIMARY KEY AUTOINCREMENT,
-    job_id      INTEGER REFERENCES jobs(job_id),
+                                          ping_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+                                          job_id      INTEGER REFERENCES jobs(job_id),
     customer_nm TEXT,
     vehicle_txt TEXT,
     amount_num  REAL,
-    made_at     TEXT
-  );
+    made_at     TEXT,
+    paid_at     TEXT
+    );
   CREATE TABLE IF NOT EXISTS service_requests (
-    req_id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    customer_id INTEGER REFERENCES customers(customer_id),
+                                                req_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                customer_id INTEGER REFERENCES customers(customer_id),
     customer_nm TEXT,
     vehicle_txt TEXT,
     issue_txt   TEXT,
     status_txt  TEXT DEFAULT 'pending',
     est_cost    REAL DEFAULT 0,
     made_at     TEXT
-  );
+    );
 `)
+
+// Add paid_at column if it doesn't exist (for existing databases)
+try {
+  db.exec(`ALTER TABLE cost_pings ADD COLUMN paid_at TEXT`)
+} catch (e) {
+  // Column already exists, ignore
+}
 
 const seed = db.transaction(() => {
   if (db.prepare('SELECT 1 FROM mechanics LIMIT 1').get()) return
@@ -90,11 +99,11 @@ const seed = db.transaction(() => {
   ins_j.run('General Inspection',       'John Doe',      'Vehicle #5001',       null, 'pending',     'medium', 'pending_diag',     0)
   ins_j.run('Oil Leak Repair',          'Jane Smith',    'Vehicle #5002',       3,    'assigned',    'medium', 'oil_leak',         250)
 
-  const ins_sr = db.prepare('INSERT INTO service_requests (customer_id, vehicle_txt, issue_txt, status_txt, est_cost, made_at) VALUES (?, ?, ?, ?, ?, ?)')
+  const ins_sr = db.prepare('INSERT INTO service_requests (customer_id, customer_nm, vehicle_txt, issue_txt, status_txt, est_cost, made_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
   const now = new Date().toISOString()
-  ins_sr.run(301, '2021 Toyota Corolla', 'Brake inspection', 'pending',     180.00, now)
-  ins_sr.run(301, '2018 Honda Civic',    'Oil change',       'completed',    59.99, now)
-  ins_sr.run(301, '2021 Toyota Corolla', 'Tire rotation',    'in-progress',  40.00, now)
+  ins_sr.run(301, 'Anthony DiDio', '2021 Toyota Corolla', 'Brake inspection', 'pending',     180.00, now)
+  ins_sr.run(301, 'Anthony DiDio', '2018 Honda Civic',    'Oil change',       'completed',    59.99, now)
+  ins_sr.run(301, 'Anthony DiDio', '2021 Toyota Corolla', 'Tire rotation',    'in-progress',  40.00, now)
 })
 
 seed()

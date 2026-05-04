@@ -151,3 +151,44 @@
   color: rgba(255, 255, 255, 0.85);
   letter-spacing: 0.5px;
 }
+
+/* Modal Background */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+}
+
+/* Modal Content Card */
+.modal-card {
+  background: #ffffff;
+  width: 90%;
+  max-width: 450px;
+  margin: 100px auto;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.modal-card h2 { margin-top: 0; color: #333; }
+
+/* Form Elements */
+label { display: block; margin: 10px 0 5px; font-weight: bold; }
+input, textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+/* Buttons */
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-primary { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+.btn-success { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+.btn-secondary { background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
