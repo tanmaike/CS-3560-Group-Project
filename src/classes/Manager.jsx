@@ -366,13 +366,13 @@ const Manager = () => {
                                                                 autoFocus
                                                             />
                                                             <div className="action-buttons">
-                                                                <button
+                                                                <button 
                                                                     className="action-btn save-quote-btn"
                                                                     onClick={() => recordQuote(job.jobId, quoteInput)}
                                                                 >
                                                                     Save Quote
                                                                 </button>
-                                                                <button
+                                                                <button 
                                                                     className="action-btn cancel-btn"
                                                                     onClick={() => { setQuoteJobId(null); setQuoteInput(''); }}
                                                                 >
@@ -381,7 +381,7 @@ const Manager = () => {
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <button
+                                                        <button 
                                                             className="action-btn quote-btn"
                                                             onClick={() => { setQuoteJobId(job.jobId); setQuoteInput(job.jobQuote > 0 ? String(job.jobQuote) : ''); }}
                                                         >
@@ -423,7 +423,7 @@ const Manager = () => {
                                                                 >
                                                                     Assign
                                                                 </button>
-                                                                <button
+                                                                <button 
                                                                     className="action-btn cancel-btn"
                                                                     onClick={() => { setAssignJobId(null); setSelectedMechId(null); }}
                                                                 >
@@ -432,7 +432,7 @@ const Manager = () => {
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <button
+                                                        <button 
                                                             className="action-btn assign-mechanic-btn"
                                                             onClick={() => { setAssignJobId(job.jobId); setSelectedMechId(job.mechanicId); }}
                                                         >
@@ -442,7 +442,7 @@ const Manager = () => {
 
                                                     {/* Unassign Mechanic */}
                                                     {assignedMech && assignJobId !== job.jobId && (
-                                                        <button
+                                                        <button 
                                                             className="action-btn unassign-btn"
                                                             onClick={() => unassignMechanic(job.jobId)}
                                                         >
@@ -451,7 +451,7 @@ const Manager = () => {
                                                     )}
 
                                                     {/* Terminate Job */}
-                                                    <button
+                                                    <button 
                                                         className="action-btn terminate-btn"
                                                         onClick={() => terminateJob(job.jobId)}
                                                     >

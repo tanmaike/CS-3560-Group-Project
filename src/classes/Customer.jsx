@@ -1,3 +1,4 @@
+// Customer.jsx
 import { useState, useEffect } from 'react';
 import './Customer.css';
 import VehiclePopup from './VehiclePopup';
@@ -16,11 +17,10 @@ const Customer = () => {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Popup state
   const [showVehiclePopup, setShowVehiclePopup] = useState(false);
   const [showJobRequestPopup, setShowJobRequestPopup] = useState(false);
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
-  const [paymentType, setPaymentType] = useState('full'); // 'full' or 'invoice'
+  const [paymentType, setPaymentType] = useState('full');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const loadCustomerData = async () => {
@@ -54,32 +54,27 @@ const Customer = () => {
   const makePayment = async (amount, invoiceId = null) => {
     try {
       if (invoiceId) {
-        // Pay specific invoice
         const res = await fetch(`/api/invoices/${invoiceId}/pay`, {
           method: 'PATCH',
         });
         const data = await res.json();
-        console.log('Invoice payment response:', data);
         if (!res.ok) {
           alert(data.msg || 'Payment failed');
           return;
         }
       } else {
-        // Pay general balance
         const res = await fetch(`/api/customers/${customerID}/payment`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount_num: amount }),
         });
         const data = await res.json();
-        console.log('Payment response:', data);
         if (!res.ok) {
           alert(data.msg || 'Payment failed');
           return;
         }
       }
 
-      // Reload all customer data to reflect changes
       await loadCustomerData();
     } catch (error) {
       console.error('Payment failed:', error);
@@ -162,7 +157,6 @@ const Customer = () => {
 
   return (
       <div className="customer-portal">
-        {/* Popups */}
         {showVehiclePopup && (
             <VehiclePopup
                 customerID={customerID}
@@ -203,7 +197,6 @@ const Customer = () => {
             />
         )}
 
-        {/* Customer Info Header */}
         <div className="customer-info-header">
           <div className="customer-info-content">
             <div className="customer-greeting">
@@ -225,9 +218,7 @@ const Customer = () => {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="main-content">
-          {/* Stats Summary Cards */}
           <div className="stats-container">
             <table className="stats-table">
               <thead>
@@ -249,13 +240,12 @@ const Customer = () => {
             </table>
           </div>
 
-          {/* Action Buttons */}
           <div className="action-bar">
             <button className="btn btn-primary" onClick={() => setShowVehiclePopup(true)}>
-              🚗 Add Vehicle
+              Add Vehicle
             </button>
             <button className="btn btn-primary" onClick={() => setShowJobRequestPopup(true)}>
-              🔧 Request Service
+              Request Service
             </button>
             <button className="btn btn-secondary" onClick={linkInsurance}>Link Insurance</button>
             <button className="btn btn-secondary" onClick={updateInfo}>Update Info</button>
@@ -269,12 +259,11 @@ const Customer = () => {
                       setShowPaymentPopup(true);
                     }}
                 >
-                  💳 Pay Balance (${paymentsDue.toFixed(2)})
+                  Pay Balance (${paymentsDue.toFixed(2)})
                 </button>
             )}
           </div>
 
-          {/* Filter and Search Bar */}
           <div className="filter-bar">
             <div className="filter-group">
               <button className={`filter-option ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</button>
@@ -295,7 +284,6 @@ const Customer = () => {
             </div>
           </div>
 
-          {/* Vehicles Table */}
           <div className="table-container">
             <h2 className="section-title">My Vehicles</h2>
             <table className="data-table">
@@ -319,8 +307,8 @@ const Customer = () => {
                     <td>{vehicle.model}</td>
                     <td>{vehicle.plate}</td>
                     <td>{vehicle.status}</td>
-                    <td>{vehicle.issue || '—'}</td>
-                    <td>{vehicle.appointment || '—'}</td>
+                    <td>{vehicle.issue || '\u2014'}</td>
+                    <td>{vehicle.appointment || '\u2014'}</td>
                     <td className="action-cell">
                       <button className="btn-sm" onClick={() => viewVehicleStatus(vehicle.id)}>View</button>
                     </td>
@@ -329,7 +317,7 @@ const Customer = () => {
               {vehicles.length === 0 && (
                   <tr>
                     <td colSpan="8" className="empty-row">
-                      No vehicles yet — <button className="btn-sm" onClick={() => setShowVehiclePopup(true)}>Add your first vehicle</button>
+                      No vehicles yet <button className="btn-sm" onClick={() => setShowVehiclePopup(true)}>Add your first vehicle</button>
                     </td>
                   </tr>
               )}
@@ -337,9 +325,8 @@ const Customer = () => {
             </table>
           </div>
 
-          {/* Service Requests Table */}
           <div className="table-container">
-            <h2 className="section-title">Service Requests & Status</h2>
+            <h2 className="section-title">Service Requests &amp; Status</h2>
             <table className="data-table">
               <thead>
               <tr>
@@ -377,12 +364,12 @@ const Customer = () => {
                         {request.invoiceAmount != null ? (
                             <span style={{ color: isInvoicePaid ? '#888' : '#059669', fontWeight: 600 }}>
                           ${request.invoiceAmount?.toFixed(2)}
-                              {isInvoicePaid && <span style={{ fontSize: '11px', marginLeft: '6px', color: '#10b981' }}>✓ Paid</span>}
+                              {isInvoicePaid && <span style={{ fontSize: '11px', marginLeft: '6px', color: '#10b981' }}>Paid</span>}
                         </span>
                         ) : request.status === 'quoted' ? (
                             <span style={{ color: '#eab308', fontSize: '12px' }}>Awaiting invoice</span>
                         ) : (
-                            '—'
+                            '\u2014'
                         )}
                       </td>
                       <td>
@@ -400,7 +387,7 @@ const Customer = () => {
                             </button>
                         )}
                         {isInvoicePaid && (
-                            <span style={{ fontSize: '12px', color: '#10b981' }}>Paid ✓</span>
+                            <span style={{ fontSize: '12px', color: '#10b981' }}>Paid</span>
                         )}
                         {!request.invoiceId && request.status === 'completed' && paymentsDue > 0 && (
                             <button
@@ -421,7 +408,7 @@ const Customer = () => {
               {filteredRequests.length === 0 && (
                   <tr>
                     <td colSpan="6" className="empty-row">
-                      No service requests yet — <button className="btn-sm" onClick={() => setShowJobRequestPopup(true)}>Request a service</button>
+                      No service requests yet <button className="btn-sm" onClick={() => setShowJobRequestPopup(true)}>Request a service</button>
                     </td>
                   </tr>
               )}
@@ -429,7 +416,6 @@ const Customer = () => {
             </table>
           </div>
 
-          {/* Invoices Table */}
           {invoices.length > 0 && (
               <div className="table-container">
                 <h2 className="section-title">Invoices</h2>
@@ -454,7 +440,7 @@ const Customer = () => {
                         <td style={{ color: inv.paid_at ? '#888' : '#059669', fontWeight: 600 }}>
                           ${inv.amount_num?.toFixed(2)}
                         </td>
-                        <td>{inv.made_at ? new Date(inv.made_at).toLocaleDateString() : '—'}</td>
+                        <td>{inv.made_at ? new Date(inv.made_at).toLocaleDateString() : '\u2014'}</td>
                         <td>
                           {inv.paid_at ? (
                               <span className="status-badge status-completed">Paid</span>
@@ -488,13 +474,12 @@ const Customer = () => {
               </div>
           )}
 
-          {/* Unpaid Invoices Summary */}
           {invoices.filter(inv => !inv.paid_at).length > 0 && (
               <div className="action-bar" style={{ marginTop: '16px' }}>
-                <span style={{ marginRight: '12px', fontWeight: 600, color: '#666' }}>
-                  {invoices.filter(inv => !inv.paid_at).length} unpaid invoice(s) —
-                  Total: ${invoices.filter(inv => !inv.paid_at).reduce((sum, inv) => sum + inv.amount_num, 0).toFixed(2)}
-                </span>
+            <span style={{ marginRight: '12px', fontWeight: 600, color: '#666' }}>
+              {invoices.filter(inv => !inv.paid_at).length} unpaid invoice(s) \u2014
+              Total: ${invoices.filter(inv => !inv.paid_at).reduce((sum, inv) => sum + inv.amount_num, 0).toFixed(2)}
+            </span>
                 <button
                     className="btn btn-danger"
                     onClick={() => {
@@ -503,12 +488,11 @@ const Customer = () => {
                       setShowPaymentPopup(true);
                     }}
                 >
-                  💳 Pay All Invoices
+                  Pay All Invoices
                 </button>
               </div>
           )}
 
-          {/* Recent History Table */}
           {serviceRequests.some(r => r.status === 'completed') && (
               <div className="table-container">
                 <h2 className="section-title">Recent History</h2>
@@ -536,14 +520,14 @@ const Customer = () => {
                               <td>{request.request}</td>
                               <td>{request.vehicle}</td>
                               <td>${request.estimatedCost?.toFixed(2) || '0.00'}</td>
-                              <td>{request.completedAt ? new Date(request.completedAt).toLocaleDateString() : '—'}</td>
+                              <td>{request.completedAt ? new Date(request.completedAt).toLocaleDateString() : '\u2014'}</td>
                               <td>
                                 {invoice?.paid_at ? (
                                     <span className="status-badge status-completed">Paid</span>
                                 ) : request.invoiceId ? (
                                     <span className="status-badge status-pending">Unpaid</span>
                                 ) : (
-                                    '—'
+                                    '\u2014'
                                 )}
                               </td>
                             </tr>

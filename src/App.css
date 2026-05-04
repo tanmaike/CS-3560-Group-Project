@@ -1,184 +1,194 @@
-.counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
-  margin-bottom: 24px;
+/* src/App.css - App component styles */
 
-  &:hover {
-    border-color: var(--accent-border);
-  }
-  &:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
+/* App Container */
+.app-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--bg-light-gray) 0%, var(--bg-white) 100%);
 }
 
-.hero {
-  position: relative;
-
-  .base,
-  .framework,
-  .vite {
-    inset-inline: 0;
-    margin: 0 auto;
-  }
-
-  .base {
-    width: 170px;
-    position: relative;
-    z-index: 0;
-  }
-
-  .framework,
-  .vite {
-    position: absolute;
-  }
-
-  .framework {
-    z-index: 1;
-    top: 34px;
-    height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
-  }
-
-  .vite {
-    z-index: 0;
-    top: 107px;
-    height: 26px;
-    width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
-  }
+/* App Header  */
+.app-header {
+  background-color: var(--bg-dark-gray);
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 2px solid var(--accent-red);
 }
 
-#center {
+.app-header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+/* Brand Section */
+.brand-section {
   display: flex;
   flex-direction: column;
-  gap: 25px;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
-
-  @media (max-width: 1024px) {
-    padding: 32px 20px 24px;
-    gap: 18px;
-  }
 }
 
-#next-steps {
+.brand-text {
+  font-size: 28px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-red));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 1px;
+}
+
+.brand-tagline {
+  font-size: 11px;
+  color: var(--text-light);
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Portal Navigation Buttons */
+.portal-nav {
   display: flex;
-  border-top: 1px solid var(--border);
-  text-align: left;
+  gap: 12px;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 6px;
+  border-radius: 12px;
+}
 
-  & > div {
-    flex: 1 1 0;
-    padding: 32px;
-    @media (max-width: 1024px) {
-      padding: 24px 20px;
-    }
-  }
+.portal-nav-btn {
+  padding: 10px 24px;
+  background: transparent;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
 
-  .icon {
-    margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
-  }
+.portal-nav-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
 
-  @media (max-width: 1024px) {
+.portal-nav-btn.active {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-red));
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 255, 255, 0.3);
+}
+
+.portal-nav-btn.active:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 255, 255, 0.4);
+}
+
+/* App Header */
+@media (max-width: 768px) {
+  .app-header-content {
     flex-direction: column;
     text-align: center;
+    padding: 16px;
   }
-}
-
-#docs {
-  border-right: 1px solid var(--border);
-
-  @media (max-width: 1024px) {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-}
-
-#next-steps ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
-
-  .logo {
-    height: 18px;
-  }
-
-  a {
-    color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
-    background: var(--social-bg);
-    display: flex;
-    padding: 6px 12px;
+  
+  .brand-section {
     align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    transition: box-shadow 0.3s;
-
-    &:hover {
-      box-shadow: var(--shadow);
-    }
-    .button-icon {
-      height: 18px;
-      width: 18px;
-    }
   }
-
-  @media (max-width: 1024px) {
-    margin-top: 20px;
-    flex-wrap: wrap;
+  
+  .portal-nav {
+    width: 100%;
     justify-content: center;
-
-    li {
-      flex: 1 1 calc(50% - 8px);
-    }
-
-    a {
-      width: 100%;
-      justify-content: center;
-      box-sizing: border-box;
-    }
+  }
+  
+  .portal-nav-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 16px;
+    font-size: 12px;
   }
 }
 
-#spacer {
-  height: 88px;
-  border-top: 1px solid var(--border);
-  @media (max-width: 1024px) {
-    height: 48px;
+@media (max-width: 480px) {
+  .portal-nav {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .portal-nav-btn {
+    width: 100%;
   }
 }
+/* ── Sign Out button ── */
+.logout-btn {
+  background: none;
+  border: 0.5px solid rgba(255,255,255,0.25);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.75);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
 
-.ticks {
-  position: relative;
+.logout-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+/* ── Active portal label in header ── */
+.portal-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.5px;
+}
+
+/* Modal Background */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+}
+
+/* Modal Content Card */
+.modal-card {
+  background: #ffffff;
+  width: 90%;
+  max-width: 450px;
+  margin: 100px auto;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.modal-card h2 { margin-top: 0; color: #333; }
+
+/* Form Elements */
+label { display: block; margin: 10px 0 5px; font-weight: bold; }
+input, textarea {
   width: 100%;
-
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
-
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
-  }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
-  }
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-sizing: border-box;
 }
+
+/* Buttons */
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-primary { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+.btn-success { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+.btn-secondary { background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
