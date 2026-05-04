@@ -1,17 +1,59 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+// App.jsx
+import { useState } from 'react';
+import Login from './Login';
+import Mechanic from './classes/Mechanic';
+import Customer from './classes/Customer';
+import Manager from './classes/Manager';
+import './App.css';
+
+const PORTAL_LABELS = {
+  customer: 'Customer Portal',
+  manager:  'Management Portal',
+  mechanic: 'Mechanic Portal',
+};
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [loggedInAs, setLoggedInAs] = useState(null);
+  const [loginData, setLoginData] = useState(null);
+
+  const handleLogin = (portalKey, data) => {
+    setLoggedInAs(portalKey);
+    setLoginData(data || null);
+  };
+
+  const handleLogout = () => {
+    setLoggedInAs(null);
+    setLoginData(null);
+  };
+
+  if (!loggedInAs) {
+    return <Login onLogin={handleLogin} />;
+  }
 
   return (
-    <>
-      <h1>mechanic</h1>
-    </>
-  )
+      <div className="app-container">
+        <div className="app-header">
+          <div className="app-header-content">
+            <div className="brand-section">
+              <span className="brand-text">Mechanic Shop</span>
+              <span className="brand-tagline">Professional Mechanical Service</span>
+            </div>
+
+            <div className="portal-label">
+              {PORTAL_LABELS[loggedInAs]}
+            </div>
+
+            <button className="logout-btn" onClick={handleLogout}>
+              Sign Out
+            </button>
+          </div>
+        </div>
+
+        {loggedInAs === 'mechanic' && <Mechanic mechanicId={loginData?.mechanicId || 1} />}
+        {loggedInAs === 'customer' && <Customer />}
+        {loggedInAs === 'manager'  && <Manager />}
+      </div>
+  );
 }
 
-export default App
+export default App;
