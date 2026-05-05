@@ -1,3 +1,4 @@
+// shop_api.mjs
 import { createServer } from 'node:http'
 import { parse as parse_url } from 'node:url'
 import { db } from './db.mjs'
@@ -58,6 +59,7 @@ const app_srv = createServer(async (req_obj, res_obj) => {
   const path_txt = parsed.pathname || ''
   const method_txt = req_obj.method.toUpperCase()
 
+  // ── Health Check ──
   if (method_txt === 'GET' && path_txt === '/api/health') {
     send_json(res_obj, 200, {
       ok: true,
@@ -68,6 +70,7 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── GET All Jobs (with optional filters) ──
   if (method_txt === 'GET' && path_txt === '/api/jobs') {
     const status_q = parsed.query.status
     const mech_q = parsed.query.mechanic_id
@@ -80,6 +83,34 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── CREATE Job ──
+  if (method_txt === 'POST' && path_txt === '/api/jobs') {
+    try {
+      const body = await read_json(req_obj)
+      const now = new Date().toISOString()
+      const info = db.prepare(
+          `INSERT INTO jobs (title_txt, customer_nm, vehicle_txt, vehicle_id, mechanic_id, status_txt, priority_txt, diag_code, est_cost, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+          String(body.title_txt || 'General Repair'),
+          String(body.customer_nm || 'Unknown'),
+          String(body.vehicle_txt || 'Unknown Vehicle'),
+          body.vehicle_id ? Number(body.vehicle_id) : null,
+          null,
+          String(body.status_txt || 'pending'),
+          String(body.priority_txt || 'medium'),
+          String(body.diag_code || 'new_ticket'),
+          Number(body.est_cost || 0),
+          now
+      )
+      send_json(res_obj, 201, { ok: true, job: pull_job(info.lastInsertRowid) })
+    } catch (err) {
+      send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
+    }
+    return
+  }
+
+  // ── GET Manager Jobs ──
   if (method_txt === 'GET' && path_txt === '/api/manager/jobs') {
     const rows = db.prepare('SELECT * FROM jobs ORDER BY job_id').all()
     send_json(res_obj, 200, {
@@ -97,6 +128,7 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── GET Mechanics ──
   if (method_txt === 'GET' && path_txt === '/api/mechanics') {
     const rows = db.prepare('SELECT * FROM mechanics ORDER BY mechanic_id').all()
     const get_jobs = db.prepare("SELECT job_id FROM jobs WHERE mechanic_id = ? AND status_txt != 'terminated'")
@@ -111,30 +143,33 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── GET Manager Cost Pings ──
   if (method_txt === 'GET' && path_txt === '/api/manager/cost-pings') {
     send_json(res_obj, 200, { ok: true, pings: db.prepare('SELECT * FROM cost_pings ORDER BY ping_id').all() })
     return
   }
 
+  // ── GET All Service Requests ──
   if (method_txt === 'GET' && path_txt === '/api/issues') {
     send_json(res_obj, 200, { ok: true, requests: db.prepare('SELECT * FROM service_requests ORDER BY req_id').all() })
     return
   }
 
+  // ── Manager Assign Job ──
   if (method_txt === 'POST' && path_txt === '/api/manager/assign') {
     try {
       const body = await read_json(req_obj)
       const info = db.prepare(
-        'INSERT INTO jobs (title_txt, customer_nm, vehicle_txt, status_txt, priority_txt, diag_code, est_cost, mechanic_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO jobs (title_txt, customer_nm, vehicle_txt, status_txt, priority_txt, diag_code, est_cost, mechanic_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
       ).run(
-        String(body.title_txt || 'General Repair'),
-        String(body.customer_nm || 'Unknown Customer'),
-        String(body.vehicle_txt || 'Unknown Vehicle'),
-        'pending',
-        String(body.priority_txt || 'medium'),
-        'new_ticket',
-        Number(body.est_cost || 0),
-        body.mechanic_id ? Number(body.mechanic_id) : null,
+          String(body.title_txt || 'General Repair'),
+          String(body.customer_nm || 'Unknown Customer'),
+          String(body.vehicle_txt || 'Unknown Vehicle'),
+          'pending',
+          String(body.priority_txt || 'medium'),
+          'new_ticket',
+          Number(body.est_cost || 0),
+          body.mechanic_id ? Number(body.mechanic_id) : null,
       )
       send_json(res_obj, 201, { ok: true, job: pull_job(info.lastInsertRowid) })
     } catch (err) {
@@ -143,16 +178,17 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── Customer Issue ──
   if (method_txt === 'POST' && path_txt === '/api/customer/issue') {
     try {
       const body = await read_json(req_obj)
       const info = db.prepare(
-        'INSERT INTO service_requests (customer_nm, vehicle_txt, issue_txt, made_at) VALUES (?, ?, ?, ?)'
+          'INSERT INTO service_requests (customer_nm, vehicle_txt, issue_txt, made_at) VALUES (?, ?, ?, ?)'
       ).run(
-        String(body.customer_nm || 'unknown'),
-        String(body.vehicle_txt || 'unknown'),
-        String(body.issue_txt || 'not provided'),
-        new Date().toISOString(),
+          String(body.customer_nm || 'unknown'),
+          String(body.vehicle_txt || 'unknown'),
+          String(body.issue_txt || 'not provided'),
+          new Date().toISOString(),
       )
       send_json(res_obj, 201, { ok: true, req_id: info.lastInsertRowid })
     } catch (err) {
@@ -161,6 +197,28 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── GET Customer by ID ──
+  const cust_match = path_txt.match(/^\/api\/customers\/(\d+)$/)
+  if (cust_match && method_txt === 'GET') {
+    const cust_id = Number(cust_match[1])
+    const row = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
+    if (!row) {
+      send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
+      return
+    }
+    send_json(res_obj, 200, {
+      ok: true,
+      customer: {
+        id: row.customer_id,
+        name: row.name_txt,
+        insuranceId: row.insurance_id,
+        paymentsDue: row.payments_due,
+      },
+    })
+    return
+  }
+
+  // ── Customer Vehicles (GET & POST) ──
   const cust_veh_match = path_txt.match(/^\/api\/customers\/(\d+)\/vehicles$/)
   if (cust_veh_match) {
     const cust_id = Number(cust_veh_match[1])
@@ -179,16 +237,16 @@ const app_srv = createServer(async (req_obj, res_obj) => {
       try {
         const body = await read_json(req_obj)
         db.prepare(
-          'INSERT INTO vehicles (customer_id, year_num, make_txt, model_txt, plate_txt, status_txt, issue_txt, appointment_txt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO vehicles (customer_id, year_num, make_txt, model_txt, plate_txt, status_txt, issue_txt, appointment_txt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         ).run(
-          cust_id,
-          Number(body.year_num || 2020),
-          String(body.make_txt || ''),
-          String(body.model_txt || ''),
-          String(body.plate_txt || ''),
-          String(body.status_txt || 'No Active Service'),
-          String(body.issue_txt || 'None'),
-          String(body.appointment_txt || 'No appointment scheduled'),
+            cust_id,
+            Number(body.year_num || 2020),
+            String(body.make_txt || ''),
+            String(body.model_txt || ''),
+            String(body.plate_txt || ''),
+            String(body.status_txt || 'No Active Service'),
+            String(body.issue_txt || 'None'),
+            String(body.appointment_txt || 'No appointment scheduled'),
         )
         send_json(res_obj, 201, { ok: true })
       } catch (err) {
@@ -311,28 +369,65 @@ const app_srv = createServer(async (req_obj, res_obj) => {
   const cust_sr_match = path_txt.match(/^\/api\/customers\/(\d+)\/service-requests$/)
   if (cust_sr_match) {
     const cust_id = Number(cust_sr_match[1])
+
     if (method_txt === 'GET') {
+      const customer = db.prepare('SELECT name_txt FROM customers WHERE customer_id = ?').get(cust_id)
+      const cust_name = customer ? customer.name_txt : ''
+
       const rows = db.prepare('SELECT * FROM service_requests WHERE customer_id = ? ORDER BY req_id').all(cust_id)
-      send_json(res_obj, 200, {
-        ok: true,
-        requests: rows.map((r) => ({
-          id: r.req_id, vehicle: r.vehicle_txt, request: r.issue_txt,
-          status: r.status_txt, estimatedCost: r.est_cost,
-        })),
+
+      // Enrich with job status info
+      const enriched = rows.map((r) => {
+        const job = db.prepare(
+            "SELECT status_txt, est_cost, mechanic_id, completed_at FROM jobs WHERE customer_nm = ? AND vehicle_txt LIKE ? ORDER BY job_id DESC LIMIT 1"
+        ).get(cust_name, r.vehicle_txt + '%')
+
+        return {
+          id: r.req_id,
+          vehicle: r.vehicle_txt,
+          request: r.issue_txt,
+          status: job ? job.status_txt : r.status_txt,
+          estimatedCost: job ? job.est_cost : r.est_cost,
+          mechanicId: job ? job.mechanic_id : null,
+          completedAt: job ? job.completed_at : null,
+          invoiceId: null,
+          invoiceAmount: null,
+        }
       })
+
+      // Get invoices for this customer's requests
+      const invoices = db.prepare(
+          "SELECT * FROM cost_pings WHERE customer_nm = ? ORDER BY ping_id DESC"
+      ).all(cust_name)
+
+      enriched.forEach(req => {
+        const invoice = invoices.find(inv =>
+            req.vehicle.includes(inv.vehicle_txt) || inv.vehicle_txt.includes(req.vehicle)
+        )
+        if (invoice) {
+          req.invoiceId = invoice.ping_id
+          req.invoiceAmount = invoice.amount_num
+        }
+      })
+
+      send_json(res_obj, 200, { ok: true, requests: enriched })
       return
     }
+
     if (method_txt === 'POST') {
       try {
         const body = await read_json(req_obj)
+        const customer = db.prepare('SELECT name_txt FROM customers WHERE customer_id = ?').get(cust_id)
+
         db.prepare(
-          'INSERT INTO service_requests (customer_id, vehicle_txt, issue_txt, est_cost, made_at) VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO service_requests (customer_id, customer_nm, vehicle_txt, issue_txt, est_cost, made_at) VALUES (?, ?, ?, ?, ?, ?)'
         ).run(
-          cust_id,
-          String(body.vehicle_txt || 'unknown'),
-          String(body.issue_txt || 'not provided'),
-          Number(body.est_cost || 0),
-          new Date().toISOString(),
+            cust_id,
+            customer ? customer.name_txt : 'Unknown',
+            String(body.vehicle_txt || 'unknown'),
+            String(body.issue_txt || 'not provided'),
+            Number(body.est_cost || 0),
+            new Date().toISOString(),
         )
         send_json(res_obj, 201, { ok: true })
       } catch (err) {
@@ -342,6 +437,134 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     }
   }
 
+  // ── Customer Payment ──
+  const cust_payment_match = path_txt.match(/^\/api\/customers\/(\d+)\/payment$/)
+  if (cust_payment_match && method_txt === 'PATCH') {
+    try {
+      const cust_id = Number(cust_payment_match[1])
+      const body = await read_json(req_obj)
+      const amount = Number(body.amount_num)
+
+      if (!Number.isFinite(amount) || amount <= 0) {
+        send_json(res_obj, 400, { ok: false, msg: 'amount_num must be positive' })
+        return
+      }
+
+      const customer = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
+      if (!customer) {
+        send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
+        return
+      }
+
+      const newBalance = Math.max(0, customer.payments_due - amount)
+      db.prepare('UPDATE customers SET payments_due = ? WHERE customer_id = ?')
+          .run(newBalance, cust_id)
+
+      send_json(res_obj, 200, {
+        ok: true,
+        payments_due: newBalance,
+        paid: amount
+      })
+    } catch (err) {
+      send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
+    }
+    return
+  }
+
+  // ── Customer Invoices ──
+  const cust_invoices_match = path_txt.match(/^\/api\/customers\/(\d+)\/invoices$/)
+  if (cust_invoices_match && method_txt === 'GET') {
+    const cust_id = Number(cust_invoices_match[1])
+    const customer = db.prepare('SELECT name_txt FROM customers WHERE customer_id = ?').get(cust_id)
+    if (!customer) {
+      send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
+      return
+    }
+
+    const invoices = db.prepare(`
+      SELECT c.ping_id, c.job_id, c.customer_nm, c.vehicle_txt, c.amount_num, c.made_at, c.paid_at,
+             j.status_txt as job_status, j.title_txt
+      FROM cost_pings c
+             LEFT JOIN jobs j ON c.job_id = j.job_id
+      WHERE c.customer_nm = ?
+      ORDER BY c.ping_id DESC
+    `).all(customer.name_txt)
+
+    send_json(res_obj, 200, { ok: true, invoices })
+    return
+  }
+
+  // ── Pay Invoice ──
+  const pay_invoice_match = path_txt.match(/^\/api\/invoices\/(\d+)\/pay$/)
+  if (pay_invoice_match && method_txt === 'PATCH') {
+    try {
+      const ping_id = Number(pay_invoice_match[1])
+      const ping = db.prepare('SELECT * FROM cost_pings WHERE ping_id = ?').get(ping_id)
+      if (!ping) {
+        send_json(res_obj, 404, { ok: false, msg: 'invoice not found' })
+        return
+      }
+
+      if (ping.paid_at) {
+        send_json(res_obj, 400, { ok: false, msg: 'Invoice already paid' })
+        return
+      }
+
+      const customer = db.prepare("SELECT * FROM customers WHERE name_txt = ?").get(ping.customer_nm)
+      if (customer) {
+        const newBalance = Math.max(0, customer.payments_due - ping.amount_num)
+        db.prepare('UPDATE customers SET payments_due = ? WHERE customer_id = ?')
+            .run(newBalance, customer.customer_id)
+
+        // Mark invoice as paid
+        db.prepare('UPDATE cost_pings SET paid_at = ? WHERE ping_id = ?')
+            .run(new Date().toISOString(), ping_id)
+
+        send_json(res_obj, 200, {
+          ok: true,
+          msg: `Invoice #${ping_id} paid`,
+          payments_due: newBalance,
+          paid: ping.amount_num
+        })
+      } else {
+        send_json(res_obj, 404, { ok: false, msg: 'customer not found for invoice' })
+      }
+    } catch (err) {
+      send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
+    }
+    return
+  }
+
+  // ── Sync Job Completion to Service Request ──
+  const sync_sr_match = path_txt.match(/^\/api\/jobs\/(\d+)\/sync-to-request$/)
+  if (sync_sr_match && method_txt === 'PATCH') {
+    try {
+      const job_id = Number(sync_sr_match[1])
+      const job = pull_job(job_id)
+      if (!job) {
+        send_json(res_obj, 404, { ok: false, msg: 'job not found' })
+        return
+      }
+
+      // Update matching service request status
+      db.prepare(
+          "UPDATE service_requests SET status_txt = ?, est_cost = ? WHERE customer_nm = ? AND vehicle_txt LIKE ? AND status_txt != ?"
+      ).run(
+          job.status_txt,
+          job.est_cost,
+          job.customer_nm,
+          '%' + job.vehicle_txt + '%',
+          'completed'
+      )
+
+      send_json(res_obj, 200, { ok: true, msg: 'Service request synced' })
+    } catch (err) {
+      send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
+    }
+    return
+  }
+
+  // ── GET Single Job ──
   const job_match = path_txt.match(/^\/api\/jobs\/(\d+)$/)
   if (job_match && method_txt === 'GET') {
     const id_num = Number(job_match[1])
@@ -354,6 +577,7 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── Manager Assign Mechanic to Job ──
   const mgr_assign_match = path_txt.match(/^\/api\/manager\/jobs\/(\d+)\/assign$/)
   if (mgr_assign_match && method_txt === 'PATCH') {
     try {
@@ -386,6 +610,7 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── Manager Terminate Job ──
   const mgr_term_match = path_txt.match(/^\/api\/manager\/jobs\/(\d+)\/terminate$/)
   if (mgr_term_match && method_txt === 'PATCH') {
     const id_num = Number(mgr_term_match[1])
@@ -412,6 +637,7 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── Update Job Status ──
   const status_match = path_txt.match(/^\/api\/jobs\/(\d+)\/status$/)
   if (status_match && method_txt === 'PATCH') {
     try {
@@ -448,6 +674,7 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── Record Diagnosis ──
   const diag_match = path_txt.match(/^\/api\/jobs\/(\d+)\/diagnosis$/)
   if (diag_match && method_txt === 'POST') {
     try {
@@ -458,13 +685,20 @@ const app_srv = createServer(async (req_obj, res_obj) => {
         return
       }
       const body = await read_json(req_obj)
-      db.prepare('UPDATE jobs SET diag_code = ?, diag_note = ?, diag_at = ? WHERE job_id = ?')
-        .run(
-          String(body.diag_code || row.diag_code || 'diag_pending'),
-          String(body.diag_note || ''),
-          new Date().toISOString(),
-          id_num,
-        )
+      db.prepare('UPDATE jobs SET diag_code = ?, diag_note = ?, diag_at = ?, status_txt = ? WHERE job_id = ?')
+          .run(
+              String(body.diag_code || row.diag_code || 'diag_pending'),
+              String(body.diag_note || ''),
+              new Date().toISOString(),
+              'in-progress',
+              id_num,
+          )
+
+      // Update service request status
+      db.prepare(
+          "UPDATE service_requests SET status_txt = 'in-progress' WHERE customer_nm = ? AND vehicle_txt LIKE ? AND status_txt NOT IN ('completed', 'terminated')"
+      ).run(row.customer_nm, '%' + row.vehicle_txt + '%')
+
       send_json(res_obj, 200, { ok: true, job: pull_job(id_num) })
     } catch (err) {
       send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
@@ -472,6 +706,7 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── Submit Quote / Cost Notification ──
   const quote_match = path_txt.match(/^\/api\/jobs\/(\d+)\/quote$/)
   if (quote_match && method_txt === 'POST') {
     try {
@@ -488,6 +723,9 @@ const app_srv = createServer(async (req_obj, res_obj) => {
         return
       }
       const now = new Date().toISOString()
+      const oldCost = row.est_cost || 0
+
+      // Update the job cost and status
       db.prepare('UPDATE jobs SET est_cost = ?, status_txt = ?, quote_at = ? WHERE job_id = ?')
         .run(amt, 'quoted', now, id_num)
       // Use customer_id and issue_txt for more reliable update
@@ -519,10 +757,10 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── 404 Catch-All ──
   send_json(res_obj, 404, { ok: false, msg: 'route not found' })
 })
 
 app_srv.listen(API_PORT, '0.0.0.0', () => {
-  // quick startup print
   console.log(`[shop_api] listening on http://0.0.0.0:${API_PORT}`)
 })

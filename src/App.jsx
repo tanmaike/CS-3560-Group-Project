@@ -34,28 +34,28 @@ function App() {
   }
 
   return (
-    <div className="app-container">
-      <div className="app-header">
-        <div className="app-header-content">
-          <div className="brand-section">
-            <span className="brand-text">Mechanic Shop</span>
-            <span className="brand-tagline">Professional Mechanical Service</span>
-          </div>
+      <div className="app-container">
+        <div className="app-header">
+          <div className="app-header-content">
+            <div className="brand-section">
+              <span className="brand-text">Mechanic Shop</span>
+              <span className="brand-tagline">Professional Mechanical Service</span>
+            </div>
 
-          <div className="portal-label">
-            {PORTAL_LABELS[loggedInAs]}
-          </div>
+            <div className="portal-label">
+              {PORTAL_LABELS[loggedInAs]}
+            </div>
 
-          <button className="logout-btn" onClick={handleLogout}>
-            Sign Out
-          </button>
+            <button className="logout-btn" onClick={handleLogout}>
+              Sign Out
+            </button>
+          </div>
         </div>
-      </div>
 
-      {loggedInAs === 'mechanic' && <Mechanic />}
-      {loggedInAs === 'customer' && <Customer />}
-      {loggedInAs === 'manager'  && <Manager />}
-    </div>
+        {loggedInAs === 'mechanic' && <Mechanic mechanicId={loginData?.mechanicId || 1} />}
+        {loggedInAs === 'customer' && <Customer />}
+        {loggedInAs === 'manager'  && <Manager />}
+      </div>
   );
 }
 
