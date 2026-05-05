@@ -368,8 +368,17 @@ const app_srv = createServer(async (req_obj, res_obj) => {
       const new_status = mech_id ? 'assigned' : 'pending'
       db.prepare('UPDATE jobs SET mechanic_id = ?, status_txt = ?, updated_at = ? WHERE job_id = ?')
         .run(mech_id, new_status, new Date().toISOString(), id_num)
-      db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(issue_txt) = LOWER(?)')
-        .run(new_status, row.customer_nm, row.vehicle_txt, row.title_txt)
+      // Always look up customer_id from customers table using customer_nm
+      const cust = db.prepare('SELECT customer_id FROM customers WHERE name_txt = ?').get(row.customer_nm)
+      const customer_id = cust ? cust.customer_id : null;
+      const job_issue = (row.title_txt || '').toLowerCase().trim();
+      if (customer_id) {
+        db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_id = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
+          .run(new_status, customer_id, row.vehicle_txt, job_issue)
+      } else {
+        db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
+          .run(new_status, row.customer_nm, row.vehicle_txt, job_issue)
+      }
       send_json(res_obj, 200, { ok: true })
     } catch (err) {
       send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
@@ -388,8 +397,17 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     const now = new Date().toISOString()
     db.prepare('UPDATE jobs SET status_txt = ?, mechanic_id = NULL, updated_at = ? WHERE job_id = ?')
       .run('terminated', now, id_num)
-    db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(issue_txt) = LOWER(?)')
-      .run('terminated', row.customer_nm, row.vehicle_txt, row.title_txt)
+    // Always look up customer_id from customers table using customer_nm
+    const cust = db.prepare('SELECT customer_id FROM customers WHERE name_txt = ?').get(row.customer_nm)
+    const customer_id = cust ? cust.customer_id : null;
+    const job_issue = (row.title_txt || '').toLowerCase().trim();
+    if (customer_id) {
+      db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_id = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
+        .run('terminated', customer_id, row.vehicle_txt, job_issue)
+    } else {
+      db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
+        .run('terminated', row.customer_nm, row.vehicle_txt, job_issue)
+    }
     send_json(res_obj, 200, { ok: true })
     return
   }
@@ -412,8 +430,17 @@ const app_srv = createServer(async (req_obj, res_obj) => {
       const now = new Date().toISOString()
       db.prepare('UPDATE jobs SET status_txt = ?, updated_at = ?, completed_at = ? WHERE job_id = ?')
         .run(nxt, now, nxt === 'completed' ? now : row.completed_at, id_num)
-      db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(issue_txt) = LOWER(?)')
-        .run(nxt, row.customer_nm, row.vehicle_txt, row.title_txt)
+      // Always look up customer_id from customers table using customer_nm
+      const cust = db.prepare('SELECT customer_id FROM customers WHERE name_txt = ?').get(row.customer_nm)
+      const customer_id = cust ? cust.customer_id : null;
+      const job_issue = (row.title_txt || '').toLowerCase().trim();
+      if (customer_id) {
+        db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_id = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
+          .run(nxt, customer_id, row.vehicle_txt, job_issue)
+      } else {
+        db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
+          .run(nxt, row.customer_nm, row.vehicle_txt, job_issue)
+      }
       send_json(res_obj, 200, { ok: true, job: pull_job(id_num) })
     } catch (err) {
       send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
