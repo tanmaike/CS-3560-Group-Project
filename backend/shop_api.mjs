@@ -246,8 +246,14 @@ const app_srv = createServer(async (req_obj, res_obj) => {
           return
         }
 
+        const old_name = row.name_txt
         db.prepare('UPDATE customers SET name_txt = ?, insurance_id = ?, payments_due = ? WHERE customer_id = ?')
           .run(next_name, next_ins, next_due, cust_id)
+        if (old_name !== next_name) {
+          db.prepare('UPDATE jobs SET customer_nm = ? WHERE customer_nm = ?').run(next_name, old_name)
+          db.prepare('UPDATE service_requests SET customer_nm = ? WHERE customer_nm = ?').run(next_name, old_name)
+          db.prepare('UPDATE cost_pings SET customer_nm = ? WHERE customer_nm = ?').run(next_name, old_name)
+        }
 
         const updated = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
         send_json(res_obj, 200, {
@@ -352,14 +358,18 @@ const app_srv = createServer(async (req_obj, res_obj) => {
   if (mgr_assign_match && method_txt === 'PATCH') {
     try {
       const id_num = Number(mgr_assign_match[1])
-      if (!pull_job(id_num)) {
+      const row = pull_job(id_num)
+      if (!row) {
         send_json(res_obj, 404, { ok: false, msg: 'job not found' })
         return
       }
       const body = await read_json(req_obj)
       const mech_id = body.mechanic_id === null ? null : (Number(body.mechanic_id) || null)
+      const new_status = mech_id ? 'assigned' : 'pending'
       db.prepare('UPDATE jobs SET mechanic_id = ?, status_txt = ?, updated_at = ? WHERE job_id = ?')
-        .run(mech_id, mech_id ? 'assigned' : 'pending', new Date().toISOString(), id_num)
+        .run(mech_id, new_status, new Date().toISOString(), id_num)
+      db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ?')
+        .run(new_status, row.customer_nm, row.vehicle_txt)
       send_json(res_obj, 200, { ok: true })
     } catch (err) {
       send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
@@ -370,12 +380,16 @@ const app_srv = createServer(async (req_obj, res_obj) => {
   const mgr_term_match = path_txt.match(/^\/api\/manager\/jobs\/(\d+)\/terminate$/)
   if (mgr_term_match && method_txt === 'PATCH') {
     const id_num = Number(mgr_term_match[1])
-    if (!pull_job(id_num)) {
+    const row = pull_job(id_num)
+    if (!row) {
       send_json(res_obj, 404, { ok: false, msg: 'job not found' })
       return
     }
+    const now = new Date().toISOString()
     db.prepare('UPDATE jobs SET status_txt = ?, mechanic_id = NULL, updated_at = ? WHERE job_id = ?')
-      .run('terminated', new Date().toISOString(), id_num)
+      .run('terminated', now, id_num)
+    db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ?')
+      .run('terminated', row.customer_nm, row.vehicle_txt)
     send_json(res_obj, 200, { ok: true })
     return
   }
@@ -398,6 +412,8 @@ const app_srv = createServer(async (req_obj, res_obj) => {
       const now = new Date().toISOString()
       db.prepare('UPDATE jobs SET status_txt = ?, updated_at = ?, completed_at = ? WHERE job_id = ?')
         .run(nxt, now, nxt === 'completed' ? now : row.completed_at, id_num)
+      db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ?')
+        .run(nxt, row.customer_nm, row.vehicle_txt)
       send_json(res_obj, 200, { ok: true, job: pull_job(id_num) })
     } catch (err) {
       send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
@@ -447,6 +463,8 @@ const app_srv = createServer(async (req_obj, res_obj) => {
       const now = new Date().toISOString()
       db.prepare('UPDATE jobs SET est_cost = ?, status_txt = ?, quote_at = ? WHERE job_id = ?')
         .run(amt, 'quoted', now, id_num)
+      db.prepare('UPDATE service_requests SET est_cost = ? WHERE customer_nm = ? AND vehicle_txt = ?')
+        .run(amt, row.customer_nm, row.vehicle_txt)
       const ping_id = db.prepare(
         'INSERT INTO cost_pings (job_id, customer_nm, vehicle_txt, amount_num, made_at) VALUES (?, ?, ?, ?, ?)'
       ).run(row.job_id, row.customer_nm, row.vehicle_txt, amt, now).lastInsertRowid
