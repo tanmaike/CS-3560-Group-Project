@@ -1,5 +1,5 @@
 // App.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Login from './Login';
 import Mechanic from './classes/Mechanic';
 import Customer from './classes/Customer';
@@ -13,10 +13,21 @@ const PORTAL_LABELS = {
 };
 
 function App() {
-  const [loggedInAs, setLoggedInAs] = useState(null);
+  const [loggedInAs, setLoggedInAs] = useState(() => {
+    return localStorage.getItem('loggedInAs') || null;
+  });
+
+  useEffect(() => {
+    if (loggedInAs) {
+      localStorage.setItem('loggedInAs', loggedInAs);
+    }
+  }, [loggedInAs]);
 
   const handleLogin = (portalKey) => setLoggedInAs(portalKey);
-  const handleLogout = () => setLoggedInAs(null);
+  const handleLogout = () => {
+    localStorage.removeItem('loggedInAs');
+    setLoggedInAs(null);
+  };
 
   if (!loggedInAs) {
     return <Login onLogin={handleLogin} />;
