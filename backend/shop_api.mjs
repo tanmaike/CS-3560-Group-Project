@@ -197,26 +197,8 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
-  // ── GET Customer by ID ──
-  const cust_match = path_txt.match(/^\/api\/customers\/(\d+)$/)
-  if (cust_match && method_txt === 'GET') {
-    const cust_id = Number(cust_match[1])
-    const row = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
-    if (!row) {
-      send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
-      return
-    }
-    send_json(res_obj, 200, {
-      ok: true,
-      customer: {
-        id: row.customer_id,
-        name: row.name_txt,
-        insuranceId: row.insurance_id,
-        paymentsDue: row.payments_due,
-      },
-    })
-    return
-  }
+  // ── GET/PATCH Customer by ID ──
+  // (duplicate GET/PATCH customer by ID handler removed)
 
   // ── Customer Vehicles (GET & POST) ──
   const cust_veh_match = path_txt.match(/^\/api\/customers\/(\d+)\/vehicles$/)
@@ -746,6 +728,14 @@ const app_srv = createServer(async (req_obj, res_obj) => {
       const ping_id = db.prepare(
         'INSERT INTO cost_pings (job_id, customer_nm, vehicle_txt, amount_num, made_at) VALUES (?, ?, ?, ?, ?)'
       ).run(row.job_id, row.customer_nm, row.vehicle_txt, amt, now).lastInsertRowid
+      
+      // Update customer's payments_due to include the new invoice amount
+      const cust = db.prepare('SELECT customer_id FROM customers WHERE name_txt = ?').get(row.customer_nm)
+      if (cust) {
+        db.prepare('UPDATE customers SET payments_due = payments_due + ? WHERE customer_id = ?')
+          .run(amt, cust.customer_id)
+      }
+      
       send_json(res_obj, 200, {
         ok: true,
         job: pull_job(id_num),
