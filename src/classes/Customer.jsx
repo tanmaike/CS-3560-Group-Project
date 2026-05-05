@@ -2,23 +2,31 @@ import { useState, useEffect } from 'react';
 import './Customer.css';
 
 const Customer = () => {
-  const [name, setName] = useState("Anthony DiDio");
-  const [customerID] = useState(301);
-  const [insurancePolicyID, setInsurancePolicyID] = useState(900145);
-  const [paymentsDue, setPaymentsDue] = useState(249.99);
+  const [name, setName] = useState('');
+  const customerID = 301;
+  const [insurancePolicyID, setInsurancePolicyID] = useState(0);
+  const [paymentsDue, setPaymentsDue] = useState(0);
   const [vehicles, setVehicles] = useState([]);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceRequests, setServiceRequests] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const loadCustomerData = async () => {
     setLoading(true);
     try {
-      const [vData, srData] = await Promise.all([
+      const [cData, vData, srData] = await Promise.all([
+        fetch(`/api/customers/${customerID}`).then((r) => r.json()),
         fetch(`/api/customers/${customerID}/vehicles`).then((r) => r.json()),
         fetch(`/api/customers/${customerID}/service-requests`).then((r) => r.json()),
       ]);
+
+      if (cData?.customer) {
+        setName(cData.customer.name || 'Customer');
+        setInsurancePolicyID(cData.customer.insuranceId || 0);
+        setPaymentsDue(Number(cData.customer.paymentsDue) || 0);
+      }
+
       setVehicles(vData.vehicles || []);
       setServiceRequests(srData.requests || []);
     } catch (error) {
@@ -31,13 +39,20 @@ const Customer = () => {
   useEffect(() => { loadCustomerData(); }, []);
 
   const createProfile = () => {
-    setName("Anthony DiDio");
-    setInsurancePolicyID(900145);
-    setPaymentsDue(249.99);
+    loadCustomerData();
   };
 
-  const updateInfo = () => {
-    setName("Anthony D.");
+  const updateInfo = async () => {
+    try {
+      await fetch(`/api/customers/${customerID}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name_txt: 'Anthony D.' }),
+      });
+      await loadCustomerData();
+    } catch (error) {
+      console.error('Error updating customer info:', error);
+    }
   };
 
   const linkVehicle = () => {
@@ -63,8 +78,17 @@ const Customer = () => {
     }
   };
 
-  const linkInsurance = () => {
-    setInsurancePolicyID(900999);
+  const linkInsurance = async () => {
+    try {
+      await fetch(`/api/customers/${customerID}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ insurance_id: 900999 }),
+      });
+      await loadCustomerData();
+    } catch (error) {
+      console.error('Error linking insurance policy:', error);
+    }
   };
 
   const recordIssueRequest = () => {
@@ -79,8 +103,17 @@ const Customer = () => {
     }).then(() => loadCustomerData());
   };
 
-  const makePayment = (money) => {
-    setPaymentsDue(prev => Math.max(0, prev - money));
+  const makePayment = async (money) => {
+    try {
+      await fetch(`/api/customers/${customerID}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount_num: money }),
+      });
+      await loadCustomerData();
+    } catch (error) {
+      console.error('Error processing payment:', error);
+    }
   };
 
   const getFilteredRequests = () => {

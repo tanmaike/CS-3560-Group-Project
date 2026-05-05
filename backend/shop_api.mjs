@@ -199,22 +199,106 @@ const app_srv = createServer(async (req_obj, res_obj) => {
   }
 
   const cust_match = path_txt.match(/^\/api\/customers\/(\d+)$/)
-  if (cust_match && method_txt === 'GET') {
+  if (cust_match) {
     const cust_id = Number(cust_match[1])
-    const row = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
-    if (!row) {
-      send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
+
+    if (method_txt === 'GET') {
+      const row = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
+      if (!row) {
+        send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
+        return
+      }
+      send_json(res_obj, 200, {
+        ok: true,
+        customer: {
+          id: row.customer_id,
+          name: row.name_txt,
+          insuranceId: row.insurance_id,
+          paymentsDue: row.payments_due,
+        },
+      })
       return
     }
-    send_json(res_obj, 200, {
-      ok: true,
-      customer: {
-        id: row.customer_id,
-        name: row.name_txt,
-        insuranceId: row.insurance_id,
-        paymentsDue: row.payments_due,
-      },
-    })
+
+    if (method_txt === 'PATCH') {
+      try {
+        const row = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
+        if (!row) {
+          send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
+          return
+        }
+
+        const body = await read_json(req_obj)
+        const next_name = typeof body.name_txt === 'string' ? body.name_txt.trim() : row.name_txt
+        const next_ins = body.insurance_id === undefined ? row.insurance_id : Number(body.insurance_id)
+        const next_due = body.payments_due === undefined ? row.payments_due : Number(body.payments_due)
+
+        if (!next_name) {
+          send_json(res_obj, 400, { ok: false, msg: 'name_txt cannot be empty' })
+          return
+        }
+        if (!Number.isFinite(next_ins)) {
+          send_json(res_obj, 400, { ok: false, msg: 'insurance_id must be a number' })
+          return
+        }
+        if (!Number.isFinite(next_due) || next_due < 0) {
+          send_json(res_obj, 400, { ok: false, msg: 'payments_due must be >= 0' })
+          return
+        }
+
+        db.prepare('UPDATE customers SET name_txt = ?, insurance_id = ?, payments_due = ? WHERE customer_id = ?')
+          .run(next_name, next_ins, next_due, cust_id)
+
+        const updated = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
+        send_json(res_obj, 200, {
+          ok: true,
+          customer: {
+            id: updated.customer_id,
+            name: updated.name_txt,
+            insuranceId: updated.insurance_id,
+            paymentsDue: updated.payments_due,
+          },
+        })
+      } catch (err) {
+        send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
+      }
+      return
+    }
+  }
+
+  const cust_pay_match = path_txt.match(/^\/api\/customers\/(\d+)\/payments$/)
+  if (cust_pay_match && method_txt === 'POST') {
+    try {
+      const cust_id = Number(cust_pay_match[1])
+      const row = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
+      if (!row) {
+        send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
+        return
+      }
+
+      const body = await read_json(req_obj)
+      const amount_num = Number(body.amount_num)
+      if (!Number.isFinite(amount_num) || amount_num <= 0) {
+        send_json(res_obj, 400, { ok: false, msg: 'amount_num must be > 0' })
+        return
+      }
+
+      db.prepare('UPDATE customers SET payments_due = MAX(payments_due - ?, 0) WHERE customer_id = ?')
+        .run(amount_num, cust_id)
+
+      const updated = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
+      send_json(res_obj, 200, {
+        ok: true,
+        customer: {
+          id: updated.customer_id,
+          name: updated.name_txt,
+          insuranceId: updated.insurance_id,
+          paymentsDue: updated.payments_due,
+        },
+      })
+    } catch (err) {
+      send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
+    }
     return
   }
 
