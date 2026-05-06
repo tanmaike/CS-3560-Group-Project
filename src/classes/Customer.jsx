@@ -1,4 +1,3 @@
-// Customer.jsx
 import { useState, useEffect } from 'react';
 import './Customer.css';
 import VehiclePopup from './VehiclePopup';
@@ -14,15 +13,24 @@ const Customer = () => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceRequests, setServiceRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Popup state
+  const [showVehiclePopup, setShowVehiclePopup] = useState(false);
+  const [showJobRequestPopup, setShowJobRequestPopup] = useState(false);
+  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
+  const [paymentType, setPaymentType] = useState('full');
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const loadCustomerData = async () => {
     setLoading(true);
     try {
-      const [cData, vData, srData] = await Promise.all([
+      const [custData, vData, srData, invData] = await Promise.all([
         fetch(`/api/customers/${customerID}`).then((r) => r.json()),
         fetch(`/api/customers/${customerID}/vehicles`).then((r) => r.json()),
         fetch(`/api/customers/${customerID}/service-requests`).then((r) => r.json()),
+        fetch(`/api/customers/${customerID}/invoices`).then((r) => r.json()),
       ]);
 
       if (cData?.customer) {
@@ -43,17 +51,40 @@ const Customer = () => {
 
   useEffect(() => { loadCustomerData(); }, []);
 
-  const createProfile = () => {
-    loadCustomerData();
+  const updateInfo = () => {
+    setName("Anthony D.");
   };
 
-  const updateInfo = async () => {
+  const viewVehicleStatus = (vehicleId) => {
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (vehicle) {
+      alert(`${vehicle.year} ${vehicle.make} ${vehicle.model}: ${vehicle.status}`);
+    }
+  };
+
+  const makePayment = async (amount, invoiceId = null) => {
     try {
-      await fetch(`/api/customers/${customerID}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name_txt: 'Anthony D.' }),
-      });
+      if (invoiceId) {
+        const res = await fetch(`/api/invoices/${invoiceId}/pay`, {
+          method: 'PATCH',
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.msg || 'Payment failed');
+          return;
+        }
+      } else {
+        const res = await fetch(`/api/customers/${customerID}/payment`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount_num: amount }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          alert(data.msg || 'Payment failed');
+          return;
+        }
+      }
       await loadCustomerData();
     } catch (error) {
       console.error('Error updating customer info:', error);
@@ -169,6 +200,7 @@ const Customer = () => {
 
   return (
       <div className="customer-portal">
+        {/* Popups */}
         {showVehiclePopup && (
             <VehiclePopup
                 customerID={customerID}
@@ -209,6 +241,7 @@ const Customer = () => {
             />
         )}
 
+        {/* Customer Info Header */}
         <div className="customer-info-header">
           <div className="customer-info-content">
             <div className="customer-greeting">
@@ -216,10 +249,6 @@ const Customer = () => {
               <p className="customer-id-text">Customer ID: {customerID}</p>
             </div>
             <div className="customer-stats-mini">
-              <div className="mini-stat">
-                <span className="mini-stat-label">Insurance Policy</span>
-                <span className="mini-stat-value">{insurancePolicyID}</span>
-              </div>
               <div className="mini-stat">
                 <span className="mini-stat-label">Balance Due</span>
                 <span className="mini-stat-value" style={{ color: 'var(--accent-red)' }}>
@@ -230,7 +259,9 @@ const Customer = () => {
           </div>
         </div>
 
+        {/* Main Content */}
         <div className="main-content">
+          {/* Stats Summary Cards */}
           <div className="stats-container">
             <table className="stats-table">
               <thead>
@@ -252,6 +283,7 @@ const Customer = () => {
             </table>
           </div>
 
+          {/* Action Buttons */}
           <div className="action-bar">
             <button className="btn btn-primary" onClick={() => setShowVehiclePopup(true)}>
               Add Vehicle
@@ -259,9 +291,7 @@ const Customer = () => {
             <button className="btn btn-primary" onClick={() => setShowJobRequestPopup(true)}>
               Request Service
             </button>
-            <button className="btn btn-secondary" onClick={linkInsurance}>Link Insurance</button>
             <button className="btn btn-secondary" onClick={updateInfo}>Update Info</button>
-
             {paymentsDue > 0 && (
                 <button
                     className="btn btn-danger"
@@ -276,6 +306,7 @@ const Customer = () => {
             )}
           </div>
 
+          {/* Filter and Search Bar */}
           <div className="filter-bar">
             <div className="filter-group">
               <button className={`filter-option ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</button>
@@ -296,6 +327,7 @@ const Customer = () => {
             </div>
           </div>
 
+          {/* Vehicles Table */}
           <div className="table-container">
             <h2 className="section-title">My Vehicles</h2>
             <table className="data-table">
@@ -337,6 +369,7 @@ const Customer = () => {
             </table>
           </div>
 
+          {/* Service Requests Table */}
           <div className="table-container">
             <h2 className="section-title">Service Requests &amp; Status</h2>
             <table className="data-table">
@@ -428,6 +461,7 @@ const Customer = () => {
             </table>
           </div>
 
+          {/* Invoices Table */}
           {invoices.length > 0 && (
               <div className="table-container">
                 <h2 className="section-title">Invoices</h2>
@@ -486,10 +520,11 @@ const Customer = () => {
               </div>
           )}
 
+          {/* Unpaid Invoices Summary */}
           {invoices.filter(inv => !inv.paid_at).length > 0 && (
               <div className="action-bar" style={{ marginTop: '16px' }}>
             <span style={{ marginRight: '12px', fontWeight: 600, color: '#666' }}>
-              {invoices.filter(inv => !inv.paid_at).length} unpaid invoice(s) \u2014
+              {invoices.filter(inv => !inv.paid_at).length} unpaid invoice(s)
               Total: ${invoices.filter(inv => !inv.paid_at).reduce((sum, inv) => sum + inv.amount_num, 0).toFixed(2)}
             </span>
                 <button
@@ -505,6 +540,7 @@ const Customer = () => {
               </div>
           )}
 
+          {/* Recent History Table */}
           {serviceRequests.some(r => r.status === 'completed') && (
               <div className="table-container">
                 <h2 className="section-title">Recent History</h2>
