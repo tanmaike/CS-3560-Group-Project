@@ -13,23 +13,40 @@ const PORTAL_LABELS = {
 };
 
 function App() {
-  const [loggedInAs, setLoggedInAs] = useState(() => {
-    return localStorage.getItem('loggedInAs') || null;
+  const [session, setSession] = useState(() => {
+    const portal = localStorage.getItem('loggedInAs');
+    const mechanicId = localStorage.getItem('mechanicId');
+    if (!portal) return null;
+    return {
+      portal,
+      mechanicId: mechanicId ? Number(mechanicId) : null,
+    };
   });
 
   useEffect(() => {
-    if (loggedInAs) {
-      localStorage.setItem('loggedInAs', loggedInAs);
+    if (session?.portal) {
+      localStorage.setItem('loggedInAs', session.portal);
+      if (session.mechanicId != null) {
+        localStorage.setItem('mechanicId', String(session.mechanicId));
+      } else {
+        localStorage.removeItem('mechanicId');
+      }
     }
-  }, [loggedInAs]);
+  }, [session]);
 
-  const handleLogin = (portalKey) => setLoggedInAs(portalKey);
+  const handleLogin = (portalKey, loginData = {}) => {
+    setSession({
+      portal: portalKey,
+      mechanicId: loginData.mechanicId ?? null,
+    });
+  };
   const handleLogout = () => {
     localStorage.removeItem('loggedInAs');
-    setLoggedInAs(null);
+    localStorage.removeItem('mechanicId');
+    setSession(null);
   };
 
-  if (!loggedInAs) {
+  if (!session?.portal) {
     return <Login onLogin={handleLogin} />;
   }
 
@@ -42,9 +59,7 @@ function App() {
               <span className="brand-tagline">Professional Mechanical Service</span>
             </div>
 
-            <div className="portal-label">
-              {PORTAL_LABELS[loggedInAs]}
-            </div>
+            <div className="portal-label">{PORTAL_LABELS[session.portal]}</div>
 
             <button className="logout-btn" onClick={handleLogout}>
               Sign Out
@@ -52,9 +67,9 @@ function App() {
           </div>
         </div>
 
-        {loggedInAs === 'mechanic' && <Mechanic mechanicId={loginData?.mechanicId || 1} />}
-        {loggedInAs === 'customer' && <Customer />}
-        {loggedInAs === 'manager'  && <Manager />}
+        {session.portal === 'mechanic' && <Mechanic mechanicId={session.mechanicId || 1} />}
+        {session.portal === 'customer' && <Customer />}
+        {session.portal === 'manager'  && <Manager />}
       </div>
   );
 }

@@ -1,21 +1,21 @@
 // PaymentPopup.jsx
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import './Popup.css';
 
 function PaymentPopup({ balanceDue, invoiceAmount, invoiceId, isPayAll, onClose, onPayment }) {
-    const [amount, setAmount] = useState('');
+    const [amount, setAmount] = useState(() => {
+        if (isPayAll && balanceDue > 0) {
+            return String(balanceDue);
+        }
+        if (invoiceId && invoiceAmount) {
+            return String(invoiceAmount);
+        }
+        return '';
+    });
     const [selectedPreset, setSelectedPreset] = useState(null);
     const [loading, setLoading] = useState(false);
 
     const isInvoicePayment = !!invoiceId;
-
-    useEffect(() => {
-        if (isPayAll && balanceDue > 0) {
-            setAmount(String(balanceDue));
-        } else if (isInvoicePayment && invoiceAmount) {
-            setAmount(String(invoiceAmount));
-        }
-    }, [isPayAll, isInvoicePayment, balanceDue, invoiceAmount]);
 
     const displayBalance = isInvoicePayment ? invoiceAmount : balanceDue;
     const isFixedAmount = isPayAll || isInvoicePayment;
@@ -44,14 +44,17 @@ function PaymentPopup({ balanceDue, invoiceAmount, invoiceId, isPayAll, onClose,
         setLoading(true);
         await new Promise(r => setTimeout(r, 800));
 
-        if (isPayAll) {
-            onPayment?.(paymentAmount, null);
-        } else {
-            onPayment?.(paymentAmount, invoiceId);
+        try {
+            const ok = await onPayment?.(paymentAmount, isPayAll ? null : invoiceId);
+            if (ok !== false) {
+                onClose();
+            }
+        } catch {
+            // Keep the popup open so the user can retry.
+            return;
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
-        onClose();
     };
 
     const isValid = isPayAll

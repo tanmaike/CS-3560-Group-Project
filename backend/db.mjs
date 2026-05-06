@@ -60,6 +60,7 @@ db.exec(`
                                                 req_id      INTEGER PRIMARY KEY AUTOINCREMENT,
                                                 customer_id INTEGER REFERENCES customers(customer_id),
     customer_nm TEXT,
+    vehicle_id  INTEGER REFERENCES vehicles(vehicle_id),
     vehicle_txt TEXT,
     issue_txt   TEXT,
     status_txt  TEXT DEFAULT 'pending',
@@ -67,6 +68,29 @@ db.exec(`
     made_at     TEXT
     );
 `)
+
+try {
+  db.exec(`ALTER TABLE service_requests ADD COLUMN vehicle_id INTEGER REFERENCES vehicles(vehicle_id)`)
+} catch (e) {
+  // Column already exists.
+}
+
+const backfillServiceRequestVehicleIds = db.transaction(() => {
+  const reqs = db.prepare('SELECT req_id, customer_id, vehicle_txt FROM service_requests WHERE vehicle_id IS NULL').all()
+  const findVehicle = db.prepare(
+    "SELECT vehicle_id FROM vehicles WHERE customer_id = ? AND ? LIKE year_num || '% ' || make_txt || ' ' || model_txt || '%' ORDER BY vehicle_id LIMIT 1"
+  )
+  const updateReq = db.prepare('UPDATE service_requests SET vehicle_id = ? WHERE req_id = ?')
+  for (const req of reqs) {
+    if (!req.customer_id || !req.vehicle_txt) continue
+    const match = findVehicle.get(req.customer_id, req.vehicle_txt)
+    if (match?.vehicle_id) {
+      updateReq.run(match.vehicle_id, req.req_id)
+    }
+  }
+})
+
+backfillServiceRequestVehicleIds()
 
 // Add paid_at column if it doesn't exist (for existing databases)
 try {
@@ -79,31 +103,45 @@ const seed = db.transaction(() => {
   if (db.prepare('SELECT 1 FROM mechanics LIMIT 1').get()) return
 
   const ins_m = db.prepare('INSERT INTO mechanics (mechanic_id, name_txt) VALUES (?, ?)')
-  ins_m.run(1, 'Mike Thompson')
-  ins_m.run(2, 'Alex')
-  ins_m.run(3, 'Chris')
-  ins_m.run(4, 'Taylor')
+  ins_m.run(1, 'Maria Chen')
+  ins_m.run(2, 'Jordan Patel')
+  ins_m.run(3, 'Luis Romero')
+  ins_m.run(4, 'Nina Brooks')
 
-  db.prepare('INSERT INTO customers (customer_id, name_txt, insurance_id, payments_due) VALUES (301, ?, 900145, 249.99)').run('Anthony DiDio')
+  const ins_c = db.prepare(
+    'INSERT INTO customers (customer_id, name_txt, insurance_id, payments_due) VALUES (?, ?, ?, ?)'
+  )
+  ins_c.run(301, 'Olivia Carter', 910201, 0)
+  ins_c.run(302, 'Ethan Walker', 910202, 0)
+  ins_c.run(303, 'Sophia Nguyen', 910203, 0)
+  ins_c.run(304, 'Mason Reed', 910204, 0)
 
   const ins_v = db.prepare('INSERT INTO vehicles (customer_id, year_num, make_txt, model_txt, plate_txt, status_txt, issue_txt, appointment_txt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-  ins_v.run(301, 2021, 'Toyota', 'Corolla', 'ABC-123', 'In Service',       'Brake inspection', '2026-04-12 10:00 AM')
-  ins_v.run(301, 2018, 'Honda',  'Civic',   'XYZ-789', 'Ready for Pickup', 'Oil change',       '2026-04-09 2:30 PM')
+  ins_v.run(301, 2022, 'Toyota', 'RAV4', '8TKR214', 'In Service', 'Brake vibration at highway speed', '2026-05-08 09:00 AM')
+  ins_v.run(302, 2019, 'Honda', 'Accord', '7LPN553', 'Awaiting Parts', 'A/C blowing warm air', '2026-05-09 11:30 AM')
+  ins_v.run(303, 2020, 'Ford', 'Escape', '9JQW102', 'Ready for Pickup', 'Battery drain overnight', '2026-05-06 03:15 PM')
+  ins_v.run(304, 2017, 'Subaru', 'Outback', '6MZT448', 'No Active Service', 'None', 'No appointment scheduled')
+  ins_v.run(301, 2016, 'Mazda', 'CX-5', '5BRD771', 'In Service', 'Check engine light intermittent', '2026-05-10 01:00 PM')
 
   const ins_j = db.prepare('INSERT INTO jobs (title_txt, customer_nm, vehicle_txt, vehicle_id, mechanic_id, status_txt, priority_txt, diag_code, est_cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-  ins_j.run('Brake Inspection',         'Anthony DiDio',  '2021 Toyota Corolla', 1, 1,    'pending',     'medium', 'pending_diag',     180.00)
-  ins_j.run('Oil Change',               'Anthony DiDio',  '2018 Honda Civic',    2, 1,    'completed',   'low',    'oil_change',       59.99)
-  ins_j.run('Engine Diagnostics',       'Robert Brown',  '2018 Ford F-150',     null, 1,    'pending',     'medium', 'check_engine',     149.99)
-  ins_j.run('Transmission Fluid Flush', 'Emily Davis',   '2021 Subaru Outback', null, 1,    'completed',   'low',    'maintenance_due',  189.99)
-  ins_j.run('Check Engine Light',       'David Wilson',  '2017 BMW 3 Series',   null, 1,    'pending',     'high',   'engine_issue',     399.99)
-  ins_j.run('General Inspection',       'John Doe',      'Vehicle #5001',       null, null, 'pending',     'medium', 'pending_diag',     0)
-  ins_j.run('Oil Leak Repair',          'Jane Smith',    'Vehicle #5002',       null, 3,    'assigned',    'medium', 'oil_leak',         250)
+  ins_j.run('Front Brake Service', 'Olivia Carter', '2022 Toyota RAV4 (8TKR214)', 1, 1, 'in-progress', 'high', 'brake_system', 420.00)
+  ins_j.run('A/C Compressor Diagnosis', 'Ethan Walker', '2019 Honda Accord (7LPN553)', 2, 2, 'assigned', 'medium', 'ac_cooling', 260.00)
+  ins_j.run('Parasitic Draw Test', 'Sophia Nguyen', '2020 Ford Escape (9JQW102)', 3, 3, 'quoted', 'medium', 'electrical_draw', 185.00)
+  ins_j.run('Emissions System Scan', 'Olivia Carter', '2016 Mazda CX-5 (5BRD771)', 5, 4, 'pending', 'medium', 'check_engine', 140.00)
+  ins_j.run('Fleet Safety Inspection', 'BlueLine Delivery', '2021 Mercedes Sprinter', null, null, 'pending', 'low', 'inspection_pending', 0)
+  ins_j.run('Oil Leak Confirmation', 'City Utilities', '2018 Chevy Silverado', null, 3, 'assigned', 'medium', 'oil_leak', 310.00)
 
-  const ins_sr = db.prepare('INSERT INTO service_requests (customer_id, customer_nm, vehicle_txt, issue_txt, status_txt, est_cost, made_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+  const ins_sr = db.prepare('INSERT INTO service_requests (customer_id, customer_nm, vehicle_id, vehicle_txt, issue_txt, status_txt, est_cost, made_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
   const now = new Date().toISOString()
-  ins_sr.run(301, 'Anthony DiDio', '2021 Toyota Corolla', 'Brake inspection', 'pending',     180.00, now)
-  ins_sr.run(301, 'Anthony DiDio', '2018 Honda Civic',    'Oil change',       'completed',    59.99, now)
-  ins_sr.run(301, 'Anthony DiDio', '2021 Toyota Corolla', 'Tire rotation',    'in-progress',  40.00, now)
+  ins_sr.run(301, 'Olivia Carter', 1, '2022 Toyota RAV4', 'Brake vibration at highway speed', 'in-progress', 420.00, now)
+  ins_sr.run(302, 'Ethan Walker', 2, '2019 Honda Accord', 'A/C blowing warm air', 'assigned', 260.00, now)
+  ins_sr.run(303, 'Sophia Nguyen', 3, '2020 Ford Escape', 'Battery drain overnight', 'quoted', 185.00, now)
+  ins_sr.run(301, 'Olivia Carter', 5, '2016 Mazda CX-5', 'Check engine light intermittent', 'pending', 140.00, now)
+
+  const ins_ping = db.prepare(
+    'INSERT INTO cost_pings (job_id, customer_nm, vehicle_txt, amount_num, made_at, paid_at) VALUES (?, ?, ?, ?, ?, ?)'
+  )
+  ins_ping.run(3, 'Sophia Nguyen', '2020 Ford Escape (9JQW102)', 185.00, now, null)
 })
 
 seed()

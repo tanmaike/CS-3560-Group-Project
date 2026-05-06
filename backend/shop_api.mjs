@@ -183,9 +183,10 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     try {
       const body = await read_json(req_obj)
       const info = db.prepare(
-          'INSERT INTO service_requests (customer_nm, vehicle_txt, issue_txt, made_at) VALUES (?, ?, ?, ?)'
+          'INSERT INTO service_requests (customer_nm, vehicle_id, vehicle_txt, issue_txt, made_at) VALUES (?, ?, ?, ?, ?)'
       ).run(
           String(body.customer_nm || 'unknown'),
+          body.vehicle_id ? Number(body.vehicle_id) : null,
           String(body.vehicle_txt || 'unknown'),
           String(body.issue_txt || 'not provided'),
           new Date().toISOString(),
@@ -360,12 +361,17 @@ const app_srv = createServer(async (req_obj, res_obj) => {
 
       // Enrich with job status info
       const enriched = rows.map((r) => {
-        const job = db.prepare(
-            "SELECT status_txt, est_cost, mechanic_id, completed_at FROM jobs WHERE customer_nm = ? AND vehicle_txt LIKE ? ORDER BY job_id DESC LIMIT 1"
-        ).get(cust_name, r.vehicle_txt + '%')
+        const job = r.vehicle_id
+            ? db.prepare(
+                'SELECT status_txt, est_cost, mechanic_id, completed_at FROM jobs WHERE vehicle_id = ? ORDER BY job_id DESC LIMIT 1'
+            ).get(r.vehicle_id)
+            : db.prepare(
+                "SELECT status_txt, est_cost, mechanic_id, completed_at FROM jobs WHERE customer_nm = ? AND vehicle_txt LIKE ? ORDER BY job_id DESC LIMIT 1"
+            ).get(cust_name, r.vehicle_txt + '%')
 
         return {
           id: r.req_id,
+          vehicleId: r.vehicle_id,
           vehicle: r.vehicle_txt,
           request: r.issue_txt,
           status: job ? job.status_txt : r.status_txt,
@@ -379,13 +385,15 @@ const app_srv = createServer(async (req_obj, res_obj) => {
 
       // Get invoices for this customer's requests
       const invoices = db.prepare(
-          "SELECT * FROM cost_pings WHERE customer_nm = ? ORDER BY ping_id DESC"
+          `SELECT c.*, j.vehicle_id
+           FROM cost_pings c
+           LEFT JOIN jobs j ON c.job_id = j.job_id
+           WHERE c.customer_nm = ?
+           ORDER BY c.ping_id DESC`
       ).all(cust_name)
 
       enriched.forEach(req => {
-        const invoice = invoices.find(inv =>
-            req.vehicle.includes(inv.vehicle_txt) || inv.vehicle_txt.includes(req.vehicle)
-        )
+        const invoice = invoices.find(inv => req.vehicleId && inv.vehicle_id === req.vehicleId)
         if (invoice) {
           req.invoiceId = invoice.ping_id
           req.invoiceAmount = invoice.amount_num
@@ -402,10 +410,11 @@ const app_srv = createServer(async (req_obj, res_obj) => {
         const customer = db.prepare('SELECT name_txt FROM customers WHERE customer_id = ?').get(cust_id)
 
         db.prepare(
-            'INSERT INTO service_requests (customer_id, customer_nm, vehicle_txt, issue_txt, est_cost, made_at) VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO service_requests (customer_id, customer_nm, vehicle_id, vehicle_txt, issue_txt, est_cost, made_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
         ).run(
             cust_id,
             customer ? customer.name_txt : 'Unknown',
+            body.vehicle_id ? Number(body.vehicle_id) : null,
             String(body.vehicle_txt || 'unknown'),
             String(body.issue_txt || 'not provided'),
             Number(body.est_cost || 0),
@@ -530,12 +539,11 @@ const app_srv = createServer(async (req_obj, res_obj) => {
 
       // Update matching service request status
       db.prepare(
-          "UPDATE service_requests SET status_txt = ?, est_cost = ? WHERE customer_nm = ? AND vehicle_txt LIKE ? AND status_txt != ?"
+          "UPDATE service_requests SET status_txt = ?, est_cost = ? WHERE vehicle_id = ? AND status_txt != ?"
       ).run(
           job.status_txt,
           job.est_cost,
-          job.customer_nm,
-          '%' + job.vehicle_txt + '%',
+          job.vehicle_id,
           'completed'
       )
 
@@ -574,17 +582,8 @@ const app_srv = createServer(async (req_obj, res_obj) => {
       const new_status = mech_id ? 'assigned' : 'pending'
       db.prepare('UPDATE jobs SET mechanic_id = ?, status_txt = ?, updated_at = ? WHERE job_id = ?')
         .run(mech_id, new_status, new Date().toISOString(), id_num)
-      // Always look up customer_id from customers table using customer_nm
-      const cust = db.prepare('SELECT customer_id FROM customers WHERE name_txt = ?').get(row.customer_nm)
-      const customer_id = cust ? cust.customer_id : null;
-      const job_issue = (row.title_txt || '').toLowerCase().trim();
-      if (customer_id) {
-        db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_id = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
-          .run(new_status, customer_id, row.vehicle_txt, job_issue)
-      } else {
-        db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
-          .run(new_status, row.customer_nm, row.vehicle_txt, job_issue)
-      }
+      db.prepare('UPDATE service_requests SET status_txt = ? WHERE vehicle_id = ?')
+        .run(new_status, row.vehicle_id)
       send_json(res_obj, 200, { ok: true })
     } catch (err) {
       send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
@@ -604,17 +603,8 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     const now = new Date().toISOString()
     db.prepare('UPDATE jobs SET status_txt = ?, mechanic_id = NULL, updated_at = ? WHERE job_id = ?')
       .run('terminated', now, id_num)
-    // Always look up customer_id from customers table using customer_nm
-    const cust = db.prepare('SELECT customer_id FROM customers WHERE name_txt = ?').get(row.customer_nm)
-    const customer_id = cust ? cust.customer_id : null;
-    const job_issue = (row.title_txt || '').toLowerCase().trim();
-    if (customer_id) {
-      db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_id = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
-        .run('terminated', customer_id, row.vehicle_txt, job_issue)
-    } else {
-      db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
-        .run('terminated', row.customer_nm, row.vehicle_txt, job_issue)
-    }
+    db.prepare('UPDATE service_requests SET status_txt = ? WHERE vehicle_id = ?')
+      .run('terminated', row.vehicle_id)
     send_json(res_obj, 200, { ok: true })
     return
   }
@@ -638,17 +628,8 @@ const app_srv = createServer(async (req_obj, res_obj) => {
       const now = new Date().toISOString()
       db.prepare('UPDATE jobs SET status_txt = ?, updated_at = ?, completed_at = ? WHERE job_id = ?')
         .run(nxt, now, nxt === 'completed' ? now : row.completed_at, id_num)
-      // Always look up customer_id from customers table using customer_nm
-      const cust = db.prepare('SELECT customer_id FROM customers WHERE name_txt = ?').get(row.customer_nm)
-      const customer_id = cust ? cust.customer_id : null;
-      const job_issue = (row.title_txt || '').toLowerCase().trim();
-      if (customer_id) {
-        db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_id = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
-          .run(nxt, customer_id, row.vehicle_txt, job_issue)
-      } else {
-        db.prepare('UPDATE service_requests SET status_txt = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
-          .run(nxt, row.customer_nm, row.vehicle_txt, job_issue)
-      }
+      db.prepare('UPDATE service_requests SET status_txt = ? WHERE vehicle_id = ?')
+        .run(nxt, row.vehicle_id)
       send_json(res_obj, 200, { ok: true, job: pull_job(id_num) })
     } catch (err) {
       send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
@@ -678,8 +659,8 @@ const app_srv = createServer(async (req_obj, res_obj) => {
 
       // Update service request status
       db.prepare(
-          "UPDATE service_requests SET status_txt = 'in-progress' WHERE customer_nm = ? AND vehicle_txt LIKE ? AND status_txt NOT IN ('completed', 'terminated')"
-      ).run(row.customer_nm, '%' + row.vehicle_txt + '%')
+          "UPDATE service_requests SET status_txt = 'in-progress' WHERE vehicle_id = ? AND status_txt NOT IN ('completed', 'terminated')"
+      ).run(row.vehicle_id)
 
       send_json(res_obj, 200, { ok: true, job: pull_job(id_num) })
     } catch (err) {
@@ -705,26 +686,12 @@ const app_srv = createServer(async (req_obj, res_obj) => {
         return
       }
       const now = new Date().toISOString()
-      const oldCost = row.est_cost || 0
 
       // Update the job cost and status
       db.prepare('UPDATE jobs SET est_cost = ?, status_txt = ?, quote_at = ? WHERE job_id = ?')
         .run(amt, 'quoted', now, id_num)
-      // Use customer_id and issue_txt for more reliable update
-      if (row.customer_nm && row.title_txt && row.customer_nm.trim() && row.title_txt.trim()) {
-        // Always look up customer_id from customers table using customer_nm
-        const cust = db.prepare('SELECT customer_id FROM customers WHERE name_txt = ?').get(row.customer_nm)
-        const customer_id = cust ? cust.customer_id : null;
-        const job_issue = (row.title_txt || '').toLowerCase().trim();
-        if (customer_id) {
-          db.prepare('UPDATE service_requests SET est_cost = ? WHERE customer_id = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
-            .run(amt, customer_id, row.vehicle_txt, job_issue)
-        } else {
-          // fallback to old method if customer_id not found
-          db.prepare('UPDATE service_requests SET est_cost = ? WHERE customer_nm = ? AND vehicle_txt = ? AND LOWER(TRIM(issue_txt)) = ?')
-            .run(amt, row.customer_nm, row.vehicle_txt, job_issue)
-        }
-      }
+        db.prepare('UPDATE service_requests SET est_cost = ? WHERE vehicle_id = ?')
+            .run(amt, row.vehicle_id)
       const ping_id = db.prepare(
         'INSERT INTO cost_pings (job_id, customer_nm, vehicle_txt, amount_num, made_at) VALUES (?, ?, ?, ?, ?)'
       ).run(row.job_id, row.customer_nm, row.vehicle_txt, amt, now).lastInsertRowid

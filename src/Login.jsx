@@ -46,7 +46,7 @@ function Login({ onLogin }) {
           })
           .catch(() => setError('Could not load mechanics'));
     }
-  }, [activePortal]);
+  }, [activePortal, selectedMechanicId]);
 
   const portal = PORTALS[activePortal];
 
@@ -97,6 +97,8 @@ function Login({ onLogin }) {
     }
   };
 
+  const selectedMechanic = mechanics.find(m => m.mechanicId === Number(selectedMechanicId));
+
   return (
       <div className="login-page">
         <header className="login-app-header">
@@ -108,7 +110,7 @@ function Login({ onLogin }) {
 
         <nav className="login-tabs" role="tablist">
           {Object.entries(PORTALS).map(([key, p]) => (
-              <button
+                  <button
                   key={key}
                   role="tab"
                   aria-selected={activePortal === key}
@@ -200,11 +202,11 @@ function Login({ onLogin }) {
                   type="button"
                   className="login-id-btn"
                   onClick={handleQuickLogin}
-              >
-                <div className="login-id-text">
+                >
+                  <div className="login-id-text">
                 <span className="login-id-primary">
                   {activePortal === 'mechanic' && selectedMechanicId
-                      ? `Sign in as ${mechanics.find(m => m.mechanicId === Number(selectedMechanicId))?.name || 'Mechanic'}`
+                      ? `Sign in as ${selectedMechanic?.name || 'Mechanic'}`
                       : `Sign in with ${portal.idLabel}`
                   }
                 </span>

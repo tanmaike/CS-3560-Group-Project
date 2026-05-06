@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './Customer.css';
 import VehiclePopup from './VehiclePopup';
 import JobRequestPopup from './JobRequestPopup';
@@ -7,7 +7,6 @@ import PaymentPopup from './PaymentPopup';
 const Customer = () => {
   const [name, setName] = useState('');
   const customerID = 301;
-  const [insurancePolicyID, setInsurancePolicyID] = useState(0);
   const [paymentsDue, setPaymentsDue] = useState(0);
   const [vehicles, setVehicles] = useState([]);
   const [filter, setFilter] = useState('all');
@@ -23,10 +22,10 @@ const Customer = () => {
   const [paymentType, setPaymentType] = useState('full');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
-  const loadCustomerData = async () => {
+  const loadCustomerData = useCallback(async () => {
     setLoading(true);
     try {
-      const [custData, vData, srData, invData] = await Promise.all([
+      const [cData, vData, srData, invData] = await Promise.all([
         fetch(`/api/customers/${customerID}`).then((r) => r.json()),
         fetch(`/api/customers/${customerID}/vehicles`).then((r) => r.json()),
         fetch(`/api/customers/${customerID}/service-requests`).then((r) => r.json()),
@@ -35,7 +34,6 @@ const Customer = () => {
 
       if (cData?.customer) {
         setName(cData.customer.name || 'Customer');
-        setInsurancePolicyID(cData.customer.insuranceId || 0);
         setPaymentsDue(Number(cData.customer.paymentsDue) || 0);
       }
 
@@ -47,9 +45,19 @@ const Customer = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerID]);
 
-  useEffect(() => { loadCustomerData(); }, []);
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (active) {
+        await loadCustomerData();
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [loadCustomerData]);
 
   const updateInfo = () => {
     setName("Anthony D.");
@@ -74,7 +82,7 @@ const Customer = () => {
           return;
         }
       } else {
-        const res = await fetch(`/api/customers/${customerID}/payment`, {
+        const res = await fetch(`/api/customers/${customerID}/payments`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount_num: amount }),
@@ -86,57 +94,10 @@ const Customer = () => {
         }
       }
       await loadCustomerData();
+      return true;
     } catch (error) {
       console.error('Error updating customer info:', error);
-    }
-  };
-
-  const linkInsurance = () => {
-    setInsurancePolicyID(900999);
-  };
-
-  const viewVehicleStatus = (vehicleId) => {
-    const vehicle = vehicles.find(v => v.id === vehicleId);
-    if (vehicle) {
-      alert(`${vehicle.year} ${vehicle.make} ${vehicle.model}: ${vehicle.status}`);
-    }
-  };
-
-  const linkInsurance = async () => {
-    try {
-      await fetch(`/api/customers/${customerID}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ insurance_id: 900999 }),
-      });
-      await loadCustomerData();
-    } catch (error) {
-      console.error('Error linking insurance policy:', error);
-    }
-  };
-
-  const recordIssueRequest = () => {
-    fetch(`/api/customers/${customerID}/service-requests`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        vehicle_txt: '2021 Toyota Corolla', 
-        issue_txt: 'Customer-reported issue', 
-        est_cost: 120.00 
-      }),
-    }).then(() => loadCustomerData());
-  };
-
-  const makePayment = async (money) => {
-    try {
-      await fetch(`/api/customers/${customerID}/payments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_num: money }),
-      });
-      await loadCustomerData();
-    } catch (error) {
-      console.error('Error processing payment:', error);
+      return false;
     }
   };
 
@@ -235,8 +196,8 @@ const Customer = () => {
                   setSelectedInvoice(null);
                   setPaymentType('full');
                 }}
-                onPayment={(amount, invoiceId) => {
-                  makePayment(amount, invoiceId);
+                onPayment={async (amount, invoiceId) => {
+                  await makePayment(amount, invoiceId);
                 }}
             />
         )}

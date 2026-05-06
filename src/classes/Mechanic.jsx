@@ -1,11 +1,11 @@
 // Mechanic.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './Mechanic.css';
 
 const Mechanic = ({ mechanicId = 1 }) => {
     // State variables
     const [name, setName] = useState("");
-    const [mechanicID, setMechanicID] = useState(mechanicId);
+    const mechanicID = mechanicId;
     const [assignedJobs, setAssignedJobs] = useState([]);
 
     // UI State
@@ -18,11 +18,10 @@ const Mechanic = ({ mechanicId = 1 }) => {
     const [activeTab, setActiveTab] = useState('active');
     const [isLoading, setIsLoading] = useState(false);
 
-    const loadJobs = () =>
-        fetch(`/api/jobs?mechanic_id=${mechanicID}`)
-            .then((r) => r.json())
-            .then((data) =>
-                setAssignedJobs(data.jobs.map((j) => ({
+    const loadJobs = useCallback(async () => {
+        const res = await fetch(`/api/jobs?mechanic_id=${mechanicID}`);
+        const data = await res.json();
+        setAssignedJobs((data.jobs || []).map((j) => ({
                     id:               j.job_id,
                     title:            j.title_txt,
                     customer:         j.customer_nm,
@@ -34,27 +33,36 @@ const Mechanic = ({ mechanicId = 1 }) => {
                     notifiedCost:     j.quote_at ? j.est_cost : null,
                     diagnosisRecorded: j.diag_at ? new Date(j.diag_at).toLocaleString() : null,
                     completedAt:      j.completed_at ? new Date(j.completed_at).toLocaleString() : null,
-                })))
-            );
+                })));
+    }, [mechanicID]);
 
     // Load mechanic info and jobs on mount
     useEffect(() => {
-        setMechanicID(mechanicId);
-
-        // Load mechanic name
-        fetch('/api/mechanics')
-            .then(r => r.json())
-            .then(data => {
+        let active = true;
+        (async () => {
+            try {
+                const res = await fetch('/api/mechanics');
+                const data = await res.json();
                 const mech = (data.mechanics || []).find(m => m.mechanicId === mechanicId);
-                if (mech) {
+                if (active && mech) {
                     setName(mech.name);
                 }
-            })
-            .catch(err => console.error('Error loading mechanic info:', err));
+            } catch (err) {
+                console.error('Error loading mechanic info:', err);
+            }
 
-        // Load jobs
-        loadJobs();
-    }, [mechanicId]);
+            if (active) {
+                try {
+                    await loadJobs();
+                } catch (err) {
+                    console.error('Error loading jobs:', err);
+                }
+            }
+        })();
+        return () => {
+            active = false;
+        };
+    }, [mechanicId, loadJobs]);
 
     const showMessage = (message, type = 'success') => {
         setShowNotification({ message, type });
@@ -105,11 +113,6 @@ const Mechanic = ({ mechanicId = 1 }) => {
             body: JSON.stringify({ status_txt: 'completed' }),
         });
 
-        // Sync completion to customer's service request
-        await fetch(`/api/jobs/${jobId}/sync-to-request`, {
-            method: 'PATCH',
-        });
-
         await loadJobs();
         setIsLoading(false);
         showMessage(`Job #${jobId} marked as completed!`, 'success');
@@ -146,15 +149,6 @@ const Mechanic = ({ mechanicId = 1 }) => {
     };
 
     const displayedJobs = getFilteredJobs();
-
-    // Priority color mapping with accent colors
-    const getPriorityColor = (priority) => {
-        switch(priority) {
-            case 'high': return { bg: '#fef2f2', text: '#ff0000', border: '#ffcccc' };
-            case 'medium': return { bg: '#fff3e0', text: '#ff8c00', border: '#ffd9b3' };
-            default: return { bg: '#e8f5e9', text: '#4caf50', border: '#c8e6c9' };
-        }
-    };
 
     if (!name) {
         return (
@@ -323,7 +317,6 @@ const Mechanic = ({ mechanicId = 1 }) => {
                     ) : (
                         <div className="jobs-grid">
                             {displayedJobs.map(job => {
-                                const priorityStyle = getPriorityColor(job.priority);
                                 const isCompleted = job.status === 'completed';
 
                                 return (

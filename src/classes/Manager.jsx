@@ -1,5 +1,5 @@
 // Manager.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import './Manager.css';
 
 const Manager = () => {
@@ -10,7 +10,6 @@ const Manager = () => {
 
     const [activeTab,      setActiveTab]      = useState('active');
     const [searchTerm,     setSearchTerm]     = useState('');
-    const [selectedJobId,  setSelectedJobId]  = useState(null);
     const [selectedMechId, setSelectedMechId] = useState(null);
     const [quoteJobId,     setQuoteJobId]     = useState(null);
     const [quoteInput,     setQuoteInput]     = useState('');
@@ -23,35 +22,47 @@ const Manager = () => {
         setTimeout(() => setShowNotification(null), 3000);
     }
 
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         try {
             const [jobsRes, mechsRes] = await Promise.all([
-                fetch('/api/manager/jobs').then((r) => r.json()),
-                fetch('/api/mechanics').then((r) => r.json()),
+                fetch('/api/manager/jobs'),
+                fetch('/api/mechanics'),
             ]);
-            setJobs(jobsRes.jobs || []);
-            setMechanics(mechsRes.mechanics || []);
+            const [jobsData, mechsData] = await Promise.all([
+                jobsRes.json(),
+                mechsRes.json(),
+            ]);
+            setJobs(jobsData.jobs || []);
+            setMechanics(mechsData.mechanics || []);
         } catch (error) {
             console.error('Error loading data:', error);
             notify('Error loading data', 'error');
         }
-    };
+    }, []);
 
-    useEffect(() => { loadData(); }, []);
+    useEffect(() => {
+        let active = true;
+        (async () => {
+            if (active) await loadData();
+        })();
+        return () => {
+            active = false;
+        };
+    }, [loadData]);
 
     const terminateJob = async (jobId) => {
         const parsedJobId = Number(jobId);
         if (!parsedJobId) return;
         setIsLoading(true);
         try {
-            await fetch(`/api/manager/jobs/${parsedJobId}/terminate`, { method: 'PATCH' });
+            const res = await fetch(`/api/manager/jobs/${parsedJobId}/terminate`, { method: 'PATCH' });
+            if (!res.ok) throw new Error('terminate failed');
             await loadData();
             notify(`Job #${parsedJobId} has been terminated`);
-        } catch (error) {
+        } catch {
             notify('Error terminating job', 'error');
         } finally {
             setIsLoading(false);
-            setSelectedJobId(null);
         }
     };
 
@@ -61,14 +72,15 @@ const Manager = () => {
         if (!parsedJobId || Number.isNaN(parsedAmount) || parsedAmount < 0) return;
         setIsLoading(true);
         try {
-            await fetch(`/api/jobs/${parsedJobId}/quote`, {
+            const res = await fetch(`/api/jobs/${parsedJobId}/quote`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ amount_num: parsedAmount }),
             });
+            if (!res.ok) throw new Error('quote failed');
             await loadData();
             notify(`Quote of $${parsedAmount.toFixed(2)} saved for job #${parsedJobId}`);
-        } catch (error) {
+        } catch {
             notify('Error saving quote', 'error');
         } finally {
             setIsLoading(false);
@@ -84,14 +96,15 @@ const Manager = () => {
         const mechName = mechanics.find((m) => m.mechanicId === parsedMechanicId)?.name;
         setIsLoading(true);
         try {
-            await fetch(`/api/manager/jobs/${parsedJobId}/assign`, {
+            const res = await fetch(`/api/manager/jobs/${parsedJobId}/assign`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mechanic_id: parsedMechanicId }),
             });
+            if (!res.ok) throw new Error('assign failed');
             await loadData();
             notify(`${mechName} assigned to job #${parsedJobId}`);
-        } catch (error) {
+        } catch {
             notify('Error assigning mechanic', 'error');
         } finally {
             setIsLoading(false);
@@ -105,14 +118,15 @@ const Manager = () => {
         if (!job || job.mechanicId === null) return;
         setIsLoading(true);
         try {
-            await fetch(`/api/manager/jobs/${jobId}/assign`, {
+            const res = await fetch(`/api/manager/jobs/${jobId}/assign`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ mechanic_id: null }),
             });
+            if (!res.ok) throw new Error('unassign failed');
             await loadData();
             notify(`Mechanic unassigned from job #${jobId}`);
-        } catch (error) {
+        } catch {
             notify('Error unassigning mechanic', 'error');
         } finally {
             setIsLoading(false);
@@ -293,8 +307,6 @@ const Manager = () => {
                             {displayedJobs.map((job) => {
                                 const assignedMech = job.mechanicId ? mechanics.find((m) => m.mechanicId === job.mechanicId) : null;
                                 const isTerminated = job.jobStatus === 'terminated';
-                                const statusColor = getStatusColor(job.jobStatus);
-
                                 return (
                                     <div key={job.jobId} className="manager-job-card">
                                         {/* Card Header */}
@@ -476,17 +488,6 @@ const Manager = () => {
             </div>
         </div>
     );
-};
-
-// Helper function for status colors
-const getStatusColor = (status) => {
-    switch (status) {
-        case 'pending':    return { bg: '#fefce8', text: '#854d0e', border: '#fde047' };
-        case 'assigned':   return { bg: '#eff6ff', text: '#1d4ed8', border: '#93c5fd' };
-        case 'quoted':     return { bg: '#f0fdf4', text: '#166534', border: '#86efac' };
-        case 'terminated': return { bg: '#fef2f2', text: '#ff0000', border: '#fca5a5' };
-        default:           return { bg: '#f3f4f6', text: '#374151', border: '#d1d5db' };
-    }
 };
 
 export default Manager;

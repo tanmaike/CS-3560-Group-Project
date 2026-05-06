@@ -48,6 +48,7 @@ function JobRequestPopup({ customerID, customerName, onClose, onSuccess }) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    vehicle_id: selectedVehicle.id,
                     vehicle_txt: vehicleDescription,
                     issue_txt: formData.issue.trim(),
                     est_cost: Number(formData.estimatedCost) || 0,
