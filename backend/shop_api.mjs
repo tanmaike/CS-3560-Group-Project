@@ -714,6 +714,178 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── GET Customer Appointments ──
+  const cust_appt_match = path_txt.match(/^\/api\/customers\/(\d+)\/appointments$/)
+  if (cust_appt_match && method_txt === 'GET') {
+    const cust_id = Number(cust_appt_match[1])
+    const rows = db.prepare('SELECT * FROM appointments WHERE customer_id = ? ORDER BY scheduled_at DESC').all(cust_id)
+    
+    const formatted = rows.map((a) => {
+      const vehicle = db.prepare('SELECT * FROM vehicles WHERE vehicle_id = ?').get(a.vehicle_id)
+      const mechanic = a.mechanic_id ? db.prepare('SELECT * FROM mechanics WHERE mechanic_id = ?').get(a.mechanic_id) : null
+      return {
+        appointmentId: a.appointment_id,
+        vehicleId: a.vehicle_id,
+        vehicleDisplay: vehicle ? `${vehicle.year_num} ${vehicle.make_txt} ${vehicle.model_txt}` : 'Unknown',
+        scheduledAt: a.scheduled_at,
+        serviceType: a.service_type,
+        mechanicId: a.mechanic_id,
+        mechanicName: mechanic ? mechanic.name_txt : null,
+        preferredMechanicId: a.preferred_mechanic_id,
+        status: a.status_txt,
+        notes: a.notes_txt,
+        createdAt: a.created_at,
+      }
+    })
+    
+    send_json(res_obj, 200, { ok: true, appointments: formatted })
+    return
+  }
+
+  // ── CREATE Customer Appointment ──
+  if (cust_appt_match && method_txt === 'POST') {
+    try {
+      const cust_id = Number(cust_appt_match[1])
+      const customer = db.prepare('SELECT * FROM customers WHERE customer_id = ?').get(cust_id)
+      if (!customer) {
+        send_json(res_obj, 404, { ok: false, msg: 'customer not found' })
+        return
+      }
+
+      const body = await read_json(req_obj)
+      const vehicleId = Number(body.vehicleId)
+      const scheduledAt = String(body.scheduledAt || '')
+      const serviceType = String(body.serviceType || '')
+      const preferredMechanicId = body.preferredMechanicId ? Number(body.preferredMechanicId) : null
+      const notes = String(body.notes || '')
+
+      if (!vehicleId || !scheduledAt || !serviceType) {
+        send_json(res_obj, 400, { ok: false, msg: 'vehicleId, scheduledAt, and serviceType are required' })
+        return
+      }
+
+      const vehicle = db.prepare('SELECT * FROM vehicles WHERE vehicle_id = ? AND customer_id = ?').get(vehicleId, cust_id)
+      if (!vehicle) {
+        send_json(res_obj, 404, { ok: false, msg: 'vehicle not found for this customer' })
+        return
+      }
+
+      // Mechanic load-balancing logic
+      const mechanics = db.prepare('SELECT mechanic_id FROM mechanics ORDER BY mechanic_id').all()
+      let assignedMechanicId = null
+      let minJobCount = Infinity
+
+      for (const mech of mechanics) {
+        const jobCount = db.prepare(
+          "SELECT COUNT(*) as n FROM jobs WHERE mechanic_id = ? AND status_txt NOT IN ('completed', 'terminated')"
+        ).get(mech.mechanic_id).n
+        
+        if (jobCount < minJobCount) {
+          minJobCount = jobCount
+          assignedMechanicId = mech.mechanic_id
+        }
+      }
+
+      // If preferred mechanic provided, use them if available
+      if (preferredMechanicId) {
+        const preferred = db.prepare('SELECT mechanic_id FROM mechanics WHERE mechanic_id = ?').get(preferredMechanicId)
+        if (preferred) {
+          assignedMechanicId = preferredMechanicId
+        }
+      }
+
+      const now = new Date().toISOString()
+      const info = db.prepare(
+        'INSERT INTO appointments (customer_id, vehicle_id, scheduled_at, service_type, mechanic_id, preferred_mechanic_id, status_txt, notes_txt, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      ).run(
+        cust_id,
+        vehicleId,
+        scheduledAt,
+        serviceType,
+        assignedMechanicId,
+        preferredMechanicId,
+        'pending',
+        notes,
+        now
+      )
+
+      // Keep the customer vehicle table in sync with scheduled appointments.
+      db.prepare('UPDATE vehicles SET appointment_txt = ? WHERE vehicle_id = ?')
+        .run(scheduledAt, vehicleId)
+
+      const appt = db.prepare('SELECT * FROM appointments WHERE appointment_id = ?').get(info.lastInsertRowid)
+      const mechanic = assignedMechanicId ? db.prepare('SELECT * FROM mechanics WHERE mechanic_id = ?').get(assignedMechanicId) : null
+
+      send_json(res_obj, 201, {
+        ok: true,
+        appointment: {
+          appointmentId: appt.appointment_id,
+          vehicleId: appt.vehicle_id,
+          scheduledAt: appt.scheduled_at,
+          serviceType: appt.service_type,
+          mechanicId: appt.mechanic_id,
+          mechanicName: mechanic ? mechanic.name_txt : null,
+          status: appt.status_txt,
+          notes: appt.notes_txt,
+        }
+      })
+    } catch (err) {
+      send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
+    }
+    return
+  }
+
+  // ── GET Available Appointment Slots ──
+  if (method_txt === 'GET' && path_txt === '/api/appointments/available-slots') {
+    const mechanics = db.prepare('SELECT * FROM mechanics ORDER BY mechanic_id').all()
+    
+    // Generate available slots for next 30 days, excluding past dates and weekends
+    const slots = []
+    const timeSlots = ['09:00', '10:00', '13:00', '15:00'] // 9AM, 10AM, 1PM, 3PM
+    const now = new Date()
+    
+    for (let i = 1; i <= 30; i++) {
+      const date = new Date(now)
+      date.setDate(date.getDate() + i)
+      
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (date.getDay() === 0 || date.getDay() === 6) continue
+      
+      const dateStr = date.toISOString().split('T')[0]
+      
+      for (const time of timeSlots) {
+        const scheduledAt = `${dateStr}T${time}:00`
+        
+        // Check if any appointments exist at this time
+        const existing = db.prepare('SELECT COUNT(*) as n FROM appointments WHERE scheduled_at = ?').get(scheduledAt).n
+        if (existing > 0) continue // Skip booked slots
+        
+        // Get mechanic workloads
+        const mechanicSlots = mechanics.map((m) => {
+          const activeJobs = db.prepare(
+            "SELECT COUNT(*) as n FROM jobs WHERE mechanic_id = ? AND status_txt NOT IN ('completed', 'terminated')"
+          ).get(m.mechanic_id).n
+          
+          return {
+            mechanicId: m.mechanic_id,
+            mechanicName: m.name_txt,
+            activeJobCount: activeJobs,
+          }
+        })
+        
+        slots.push({
+          date: dateStr,
+          time: time,
+          dateTime: scheduledAt,
+          mechanics: mechanicSlots,
+        })
+      }
+    }
+    
+    send_json(res_obj, 200, { ok: true, availableSlots: slots })
+    return
+  }
+
   // ── 404 Catch-All ──
   send_json(res_obj, 404, { ok: false, msg: 'route not found' })
 })

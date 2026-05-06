@@ -3,6 +3,8 @@ import './Customer.css';
 import VehiclePopup from './VehiclePopup';
 import JobRequestPopup from './JobRequestPopup';
 import PaymentPopup from './PaymentPopup';
+import AppointmentScheduler from './AppointmentScheduler';
+import AppointmentsListView from './AppointmentsListView';
 
 const Customer = () => {
   const [name, setName] = useState('');
@@ -13,23 +15,28 @@ const Customer = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceRequests, setServiceRequests] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [mechanics, setMechanics] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Popup state
   const [showVehiclePopup, setShowVehiclePopup] = useState(false);
   const [showJobRequestPopup, setShowJobRequestPopup] = useState(false);
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
+  const [showAppointmentScheduler, setShowAppointmentScheduler] = useState(false);
   const [paymentType, setPaymentType] = useState('full');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   const loadCustomerData = useCallback(async () => {
     setLoading(true);
     try {
-      const [cData, vData, srData, invData] = await Promise.all([
+      const [cData, vData, srData, invData, apptData, mechData] = await Promise.all([
         fetch(`/api/customers/${customerID}`).then((r) => r.json()),
         fetch(`/api/customers/${customerID}/vehicles`).then((r) => r.json()),
         fetch(`/api/customers/${customerID}/service-requests`).then((r) => r.json()),
         fetch(`/api/customers/${customerID}/invoices`).then((r) => r.json()),
+        fetch(`/api/customers/${customerID}/appointments`).then((r) => r.json()),
+        fetch(`/api/mechanics`).then((r) => r.json()),
       ]);
 
       if (cData?.customer) {
@@ -40,6 +47,8 @@ const Customer = () => {
       setVehicles(vData.vehicles || []);
       setServiceRequests(srData.requests || []);
       setInvoices(invData.invoices || []);
+      setAppointments(apptData.appointments || []);
+      setMechanics(mechData.mechanics || []);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -202,6 +211,19 @@ const Customer = () => {
             />
         )}
 
+        {showAppointmentScheduler && (
+            <AppointmentScheduler
+                customerId={customerID}
+                vehicles={vehicles}
+                mechanics={mechanics}
+                onClose={() => setShowAppointmentScheduler(false)}
+                onSuccess={() => {
+                  loadCustomerData();
+                  setShowAppointmentScheduler(false);
+                }}
+            />
+        )}
+
         {/* Customer Info Header */}
         <div className="customer-info-header">
           <div className="customer-info-content">
@@ -251,6 +273,9 @@ const Customer = () => {
             </button>
             <button className="btn btn-primary" onClick={() => setShowJobRequestPopup(true)}>
               Request Service
+            </button>
+            <button className="btn btn-primary" onClick={() => setShowAppointmentScheduler(true)}>
+              Schedule Appointment
             </button>
             <button className="btn btn-secondary" onClick={updateInfo}>Update Info</button>
             {paymentsDue > 0 && (
@@ -329,6 +354,9 @@ const Customer = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Scheduled Appointments */}
+          <AppointmentsListView appointments={appointments} />
 
           {/* Service Requests Table */}
           <div className="table-container">

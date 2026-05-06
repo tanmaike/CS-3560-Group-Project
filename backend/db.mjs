@@ -67,6 +67,18 @@ db.exec(`
     est_cost    REAL DEFAULT 0,
     made_at     TEXT
     );
+  CREATE TABLE IF NOT EXISTS appointments (
+                                            appointment_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                                            customer_id           INTEGER REFERENCES customers(customer_id),
+    vehicle_id            INTEGER REFERENCES vehicles(vehicle_id),
+    scheduled_at          TEXT,
+    service_type          TEXT,
+    mechanic_id           INTEGER REFERENCES mechanics(mechanic_id),
+    preferred_mechanic_id INTEGER REFERENCES mechanics(mechanic_id),
+    status_txt            TEXT DEFAULT 'pending',
+    notes_txt             TEXT,
+    created_at            TEXT
+    );
 `)
 
 try {

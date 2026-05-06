@@ -1,0 +1,165 @@
+/* AppointmentsListView.css */
+
+.appointments-container {
+  margin: 24px 0;
+  padding: 0;
+}
+
+.appointments-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111;
+  margin: 0 0 16px 0;
+  padding: 0;
+}
+
+.appointments-empty {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 24px 16px;
+  text-align: center;
+  color: #888;
+}
+
+.appointments-empty p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.appointments-empty p:last-child {
+  margin-bottom: 0;
+  font-size: 13px;
+  color: #999;
+}
+
+.appointments-section {
+  margin-bottom: 28px;
+}
+
+.appointments-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px 0;
+  padding: 0;
+}
+
+.appointments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.appointment-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.appointment-card:hover {
+  border-color: #d0d0d0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.appointment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.appointment-vehicle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.appointment-service-type {
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.appointment-vehicle-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111;
+}
+
+.appointment-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-confirmed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-completed {
+  background: #dbeafe;
+  color: #0c4a6e;
+}
+
+.appointment-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.appointment-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.appointment-label {
+  font-weight: 500;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.appointment-value {
+  color: #111;
+  text-align: right;
+  flex: 1;
+  word-break: break-word;
+}
+
+@media (max-width: 600px) {
+  .appointment-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .appointment-detail-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .appointment-value {
+    text-align: left;
+  }
+}
