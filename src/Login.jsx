@@ -24,7 +24,7 @@ const PORTALS = {
 
 function Login({ onLogin }) {
   const [activePortal, setActivePortal] = useState('customer');
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -53,51 +53,72 @@ function Login({ onLogin }) {
   const handleTabSwitch = (key) => {
     setActivePortal(key);
     setError('');
-    setEmail('');
+    setUsername('');
     setPassword('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // For mechanic login, require mechanic selection
-    if (activePortal === 'mechanic' && !selectedMechanicId) {
-      setError('Please select your mechanic profile.');
-      return;
-    }
-
-    if (!email.trim() || !password.trim()) {
-      setError('Please enter your email and password.');
+    if (!username.trim() || !password.trim()) {
+      setError('Please enter your username and password.');
       return;
     }
 
     setError('');
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setLoading(false);
-
-    // Pass mechanic ID if it's a mechanic login
-    if (activePortal === 'mechanic') {
-      onLogin(activePortal, { mechanicId: Number(selectedMechanicId) });
-    } else {
-      onLogin(activePortal);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          portal: activePortal,
+          username: username.trim(),
+          password,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.ok || !data?.session) {
+        setError(data?.msg || 'Login failed.');
+        return;
+      }
+      onLogin(data.session.portal, {
+        customerId: data.session.customerId ?? null,
+        mechanicId: data.session.mechanicId ?? null,
+        managerId: data.session.managerId ?? null,
+        username: data.session.username ?? username.trim(),
+        displayName: data.session.displayName ?? '',
+      });
+    } catch {
+      setError('Could not contact login service.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleQuickLogin = () => {
-    if (activePortal === 'mechanic' && !selectedMechanicId) {
-      setError('Please select your mechanic profile.');
-      return;
-    }
-
-    if (activePortal === 'mechanic') {
-      onLogin(activePortal, { mechanicId: Number(selectedMechanicId) });
-    } else {
-      onLogin(activePortal);
-    }
+  const handleQuickCustomerLogin = () => {
+    onLogin('customer', {
+      customerId: 301,
+      username: 'customer-id-demo',
+      displayName: 'Customer ID Demo',
+    });
   };
 
-  const selectedMechanic = mechanics.find(m => m.mechanicId === Number(selectedMechanicId));
+  const handleQuickMechanicLogin = () => {
+    onLogin('mechanic', {
+      mechanicId: selectedMechanicId ? Number(selectedMechanicId) : 1,
+      username: 'mechanic-id-demo',
+      displayName: 'Mechanic ID Demo',
+    });
+  };
+
+  const handleQuickManagerLogin = () => {
+    onLogin('manager', {
+      managerId: 1,
+      username: 'manager-id-demo',
+      displayName: 'Manager ID Demo',
+    });
+  };
 
   return (
       <div className="login-page">
@@ -137,7 +158,7 @@ function Login({ onLogin }) {
               {activePortal === 'mechanic' && mechanics.length > 0 && (
                   <div className="login-field">
                     <label className="login-label" htmlFor="mechanic-select">
-                      Select Mechanic
+                      Active Mechanic Profiles
                     </label>
                     <select
                         id="mechanic-select"
@@ -155,15 +176,15 @@ function Login({ onLogin }) {
               )}
 
               <div className="login-field">
-                <label className="login-label" htmlFor="login-email">Email address</label>
+                <label className="login-label" htmlFor="login-username">Username</label>
                 <input
-                    id="login-email"
+                    id="login-username"
                     className="login-input"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
+                    type="text"
+                    placeholder="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
                 />
               </div>
 
@@ -192,27 +213,70 @@ function Login({ onLogin }) {
                 {loading ? 'Signing in…' : `Sign in to ${portal.label}`}
               </button>
 
-              <div className="login-divider">
-                <span className="login-divider-line" />
-                <span className="login-divider-text">or use portal ID</span>
-                <span className="login-divider-line" />
-              </div>
+              {activePortal === 'customer' && (
+                <>
+                  <div className="login-divider">
+                    <span className="login-divider-line" />
+                    <span className="login-divider-text">or use customer ID</span>
+                    <span className="login-divider-line" />
+                  </div>
 
-              <button
-                  type="button"
-                  className="login-id-btn"
-                  onClick={handleQuickLogin}
-                >
-                  <div className="login-id-text">
-                <span className="login-id-primary">
-                  {activePortal === 'mechanic' && selectedMechanicId
-                      ? `Sign in as ${selectedMechanic?.name || 'Mechanic'}`
-                      : `Sign in with ${portal.idLabel}`
-                  }
-                </span>
-                  <span className="login-id-secondary">Use your assigned ID number</span>
-                </div>
-              </button>
+                  <button
+                      type="button"
+                      className="login-id-btn"
+                      onClick={handleQuickCustomerLogin}
+                  >
+                    <div className="login-id-text">
+                      <span className="login-id-primary">Sign in with Customer ID 301</span>
+                      <span className="login-id-secondary">Demo shortcut for class presentation</span>
+                    </div>
+                  </button>
+                </>
+              )}
+
+              {activePortal === 'mechanic' && (
+                <>
+                  <div className="login-divider">
+                    <span className="login-divider-line" />
+                    <span className="login-divider-text">or use mechanic ID</span>
+                    <span className="login-divider-line" />
+                  </div>
+
+                  <button
+                      type="button"
+                      className="login-id-btn"
+                      onClick={handleQuickMechanicLogin}
+                  >
+                    <div className="login-id-text">
+                      <span className="login-id-primary">
+                        Sign in with Mechanic ID {selectedMechanicId || 1}
+                      </span>
+                      <span className="login-id-secondary">Demo shortcut for class presentation</span>
+                    </div>
+                  </button>
+                </>
+              )}
+
+              {activePortal === 'manager' && (
+                <>
+                  <div className="login-divider">
+                    <span className="login-divider-line" />
+                    <span className="login-divider-text">or use manager ID</span>
+                    <span className="login-divider-line" />
+                  </div>
+
+                  <button
+                      type="button"
+                      className="login-id-btn"
+                      onClick={handleQuickManagerLogin}
+                  >
+                    <div className="login-id-text">
+                      <span className="login-id-primary">Sign in with Manager ID 1</span>
+                      <span className="login-id-secondary">Demo shortcut for class presentation</span>
+                    </div>
+                  </button>
+                </>
+              )}
             </form>
           </div>
         </main>

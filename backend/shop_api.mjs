@@ -70,6 +70,41 @@ const app_srv = createServer(async (req_obj, res_obj) => {
     return
   }
 
+  // ── Login Authentication ──
+  if (method_txt === 'POST' && path_txt === '/api/auth/login') {
+    try {
+      const body = await read_json(req_obj)
+      const username = String(body.username || '').trim()
+      const password = String(body.password || '')
+      const portal = String(body.portal || '').trim()
+      if (!username || !password || !portal) {
+        send_json(res_obj, 400, { ok: false, msg: 'username, password, and portal are required' })
+        return
+      }
+      const user = db.prepare(
+        'SELECT username_txt, password_txt, role_txt, ref_id, display_nm FROM auth_users WHERE username_txt = ?'
+      ).get(username)
+      if (!user || user.password_txt !== password || user.role_txt !== portal) {
+        send_json(res_obj, 401, { ok: false, msg: 'invalid credentials' })
+        return
+      }
+      send_json(res_obj, 200, {
+        ok: true,
+        session: {
+          portal: user.role_txt,
+          customerId: user.role_txt === 'customer' ? user.ref_id : null,
+          mechanicId: user.role_txt === 'mechanic' ? user.ref_id : null,
+          managerId: user.role_txt === 'manager' ? user.ref_id : null,
+          displayName: user.display_nm || user.username_txt,
+          username: user.username_txt,
+        },
+      })
+    } catch (err) {
+      send_json(res_obj, 400, { ok: false, msg: String(err.message || err) })
+    }
+    return
+  }
+
   // ── GET All Jobs (with optional filters) ──
   if (method_txt === 'GET' && path_txt === '/api/jobs') {
     const status_q = parsed.query.status

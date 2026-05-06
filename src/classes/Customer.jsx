@@ -4,9 +4,9 @@ import VehiclePopup from './VehiclePopup';
 import JobRequestPopup from './JobRequestPopup';
 import PaymentPopup from './PaymentPopup';
 
-const Customer = () => {
+const Customer = ({ customerId = 301 }) => {
   const [name, setName] = useState('');
-  const customerID = 301;
+  const customerID = customerId;
   const [paymentsDue, setPaymentsDue] = useState(0);
   const [vehicles, setVehicles] = useState([]);
   const [filter, setFilter] = useState('all');
