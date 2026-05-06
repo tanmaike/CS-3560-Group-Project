@@ -112,7 +112,7 @@ function JobRequestPopup({ customerID, customerName, onClose, onSuccess }) {
         <div className="popup-overlay" onClick={onClose}>
             <div className="popup-card" onClick={e => e.stopPropagation()}>
                 <div className="popup-header">
-                    <h2>🔧 Request a Job</h2>
+                    <h2>Request a Job</h2>
                     <p className="popup-subtitle">Submit a new service request for your vehicle</p>
                 </div>
 
@@ -141,7 +141,7 @@ function JobRequestPopup({ customerID, customerName, onClose, onSuccess }) {
 
                     {selectedVehicle && (
                         <div className="popup-vehicle-preview">
-                            <span className="popup-vehicle-icon">🚗</span>
+                            <span className="popup-vehicle-icon"></span>
                             <div>
                                 <p className="popup-vehicle-name">
                                     {selectedVehicle.year} {selectedVehicle.make} {selectedVehicle.model}
@@ -185,9 +185,9 @@ function JobRequestPopup({ customerID, customerName, onClose, onSuccess }) {
                         <label className="popup-label">Priority Level</label>
                         <div className="popup-priority-selector">
                             {[
-                                { value: 'low', label: '🟢 Low', desc: 'Routine maintenance' },
-                                { value: 'medium', label: '🟡 Medium', desc: 'Minor issues' },
-                                { value: 'high', label: '🔴 High', desc: 'Urgent repair needed' },
+                                { value: 'low', label: 'Low', desc: 'Routine maintenance' },
+                                { value: 'medium', label: 'Medium', desc: 'Minor issues' },
+                                { value: 'high', label: 'High', desc: 'Urgent repair needed' },
                             ].map(p => (
                                 <label
                                     key={p.value}

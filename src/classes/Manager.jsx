@@ -198,7 +198,7 @@ const Manager = () => {
                 <div className="manager-info-content">
                     <div className="manager-greeting">
                         <div className="manager-avatar">
-                            <span>📋</span>
+                            <span></span>
                         </div>
                         <div>
                             <h1 className="welcome-text">Welcome, {manager.name}!</h1>
@@ -230,7 +230,7 @@ const Manager = () => {
                                 <p className="stat-label">Total Jobs</p>
                                 <p className="stat-value">{stats.total}</p>
                             </div>
-                            <div className="stat-icon">📋</div>
+                            <div className="stat-icon"></div>
                         </div>
                     </div>
 
@@ -293,7 +293,7 @@ const Manager = () => {
                             <input
                                 type="text"
                                 className="search-input-manager"
-                                placeholder="🔍 Search by job, customer, or vehicle..."
+                                placeholder=" Search by job, customer, or vehicle..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -316,7 +316,7 @@ const Manager = () => {
                 <div className="jobs-section">
                     <div className="jobs-header">
                         <h2 className="jobs-title">
-                            {activeTab === 'active' ? '📌 Active Jobs' : '🚫 Terminated Jobs'}
+                            {activeTab === 'active' ? ' Active Jobs' : ' Terminated Jobs'}
                         </h2>
                         <p className="jobs-count">
                             {displayedJobs.length} job{displayedJobs.length !== 1 ? 's' : ''} found
@@ -325,7 +325,7 @@ const Manager = () => {
 
                     {displayedJobs.length === 0 ? (
                         <div className="empty-state">
-                            <div className="empty-emoji">📋</div>
+                            <div className="empty-emoji"></div>
                             <p className="empty-title">No jobs found</p>
                             <p className="empty-subtitle">
                                 {searchTerm ? 'Try adjusting your search' : 'Nothing here yet!'}
@@ -348,7 +348,7 @@ const Manager = () => {
                                                 <p className="job-subtitle-manager">Vehicle #{job.vehicleId}</p>
                                             </div>
                                             <div className="job-header-icon">
-                                                {isTerminated ? '🚫' : job.jobStatus === 'quoted' ? '💰' : job.jobStatus === 'assigned' ? '🔧' : '⏳'}
+                                                {isTerminated ? '' : job.jobStatus === 'quoted' ? '' : job.jobStatus === 'assigned' ? '' : ''}
                                             </div>
                                         </div>
 
@@ -356,7 +356,7 @@ const Manager = () => {
                                         <div className="manager-job-card-body">
                                             <div className="job-details">
                                                 <div className="job-detail-item">
-                                                    <span className="detail-icon">👤</span>
+                                                    <span className="detail-icon"></span>
                                                     <div>
                                                         <p className="detail-label">Customer</p>
                                                         <p className="detail-value">{job.customerName || 'N/A'}</p>
@@ -364,7 +364,7 @@ const Manager = () => {
                                                 </div>
 
                                                 <div className="job-detail-item">
-                                                    <span className="detail-icon">🔍</span>
+                                                    <span className="detail-icon"></span>
                                                     <div>
                                                         <p className="detail-label">Diagnosis</p>
                                                         <p className="detail-value">{job.diagnosis || 'Pending'}</p>
@@ -372,7 +372,7 @@ const Manager = () => {
                                                 </div>
 
                                                 <div className="job-detail-item">
-                                                    <span className="detail-icon">👷</span>
+                                                    <span className="detail-icon"></span>
                                                     <div>
                                                         <p className="detail-label">Mechanic</p>
                                                         <p className="detail-value">
@@ -382,7 +382,7 @@ const Manager = () => {
                                                 </div>
 
                                                 <div className="job-detail-item quote-item">
-                                                    <span className="detail-icon">💵</span>
+                                                    <span className="detail-icon"></span>
                                                     <div>
                                                         <p className="detail-label">Quote</p>
                                                         <p className={`detail-value quote-value ${job.jobQuote > 0 ? 'has-quote' : ''}`}>
@@ -426,7 +426,7 @@ const Manager = () => {
                                                             className="action-btn quote-btn"
                                                             onClick={() => { setQuoteJobId(job.jobId); setQuoteInput(job.jobQuote > 0 ? String(job.jobQuote) : ''); }}
                                                         >
-                                                            💰 {job.jobQuote > 0 ? 'Update Quote' : 'Set Quote'}
+                                                             {job.jobQuote > 0 ? 'Update Quote' : 'Set Quote'}
                                                         </button>
                                                     )}
 
@@ -451,7 +451,7 @@ const Manager = () => {
                                                                                     {count === 0 ? 'Free' : `${count} job${count !== 1 ? 's' : ''}`}
                                                                                 </span>
                                                                             </div>
-                                                                            {isSelected && <span className="check-icon">✓</span>}
+                                                                            {isSelected && <span className="check-icon"></span>}
                                                                         </div>
                                                                     );
                                                                 })}
@@ -477,7 +477,7 @@ const Manager = () => {
                                                             className="action-btn assign-mechanic-btn"
                                                             onClick={() => { setAssignJobId(job.jobId); setSelectedMechId(job.mechanicId); }}
                                                         >
-                                                            👷 {assignedMech ? 'Reassign Mechanic' : 'Assign Mechanic'}
+                                                             {assignedMech ? 'Reassign Mechanic' : 'Assign Mechanic'}
                                                         </button>
                                                     )}
 
@@ -487,7 +487,7 @@ const Manager = () => {
                                                             className="action-btn unassign-btn"
                                                             onClick={() => unassignMechanic(job.jobId)}
                                                         >
-                                                            ✖ Unassign Mechanic
+                                                             Unassign Mechanic
                                                         </button>
                                                     )}
 
@@ -496,14 +496,14 @@ const Manager = () => {
                                                         className="action-btn terminate-btn"
                                                         onClick={() => terminateJob(job.jobId)}
                                                     >
-                                                        🚫 Terminate Job
+                                                         Terminate Job
                                                     </button>
                                                 </div>
                                             )}
 
                                             {isTerminated && (
                                                 <div className="terminated-badge">
-                                                    <span>🚫</span>
+                                                    <span></span>
                                                     <p>This job has been terminated</p>
                                                 </div>
                                             )}

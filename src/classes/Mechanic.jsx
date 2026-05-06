@@ -184,7 +184,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
                 <div className="mechanic-info-content">
                     <div className="mechanic-greeting">
                         <div className="mechanic-avatar">
-                            <span>🔧</span>
+                            <span></span>
                         </div>
                         <div>
                             <h1 className="welcome-text">Welcome back, {name}!</h1>
@@ -271,7 +271,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
                             <input
                                 type="text"
                                 className="search-input-mechanic"
-                                placeholder="🔍 Search by job, customer, or vehicle..."
+                                placeholder=" Search by job, customer, or vehicle..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -299,7 +299,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
                 <div className="jobs-section">
                     <div className="jobs-header">
                         <h2 className="jobs-title">
-                            {activeTab === 'active' ? '📌 Active Jobs' : '✅ Completed Jobs'}
+                            {activeTab === 'active' ? ' Active Jobs' : ' Completed Jobs'}
                         </h2>
                         <p className="jobs-count">
                             {displayedJobs.length} job{displayedJobs.length !== 1 ? 's' : ''} found
@@ -308,7 +308,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
 
                     {displayedJobs.length === 0 ? (
                         <div className="empty-state">
-                            <div className="empty-emoji">🔧</div>
+                            <div className="empty-emoji"></div>
                             <p className="empty-title">No jobs found</p>
                             <p className="empty-subtitle">
                                 {searchTerm ? 'Try adjusting your search or filter' : 'You\'re all caught up!'}
@@ -332,7 +332,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
                                                 </span>
                                             </div>
                                             <div className="job-icon">
-                                                {job.priority === 'high' ? '🚨' : job.priority === 'medium' ? '⚠️' : '🔧'}
+                                                {job.priority === 'high' ? '' : job.priority === 'medium' ? '️' : ''}
                                             </div>
                                         </div>
 
@@ -342,7 +342,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
 
                                             <div className="job-details">
                                                 <div className="job-detail-item">
-                                                    <span className="detail-icon">👤</span>
+                                                    <span className="detail-icon"></span>
                                                     <div>
                                                         <p className="detail-label">Customer</p>
                                                         <p className="detail-value">{job.customer}</p>
@@ -350,7 +350,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
                                                 </div>
 
                                                 <div className="job-detail-item">
-                                                    <span className="detail-icon">🔍</span>
+                                                    <span className="detail-icon"></span>
                                                     <div>
                                                         <p className="detail-label">Status Code</p>
                                                         <p className="detail-value">{job.vehicleStatusCode || 'N/A'}</p>
@@ -358,7 +358,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
                                                 </div>
 
                                                 <div className="job-detail-item">
-                                                    <span className="detail-icon">💰</span>
+                                                    <span className="detail-icon"></span>
                                                     <div>
                                                         <p className="detail-label">Estimated Cost</p>
                                                         <p className="detail-value cost-value">${job.estimatedCost?.toFixed(2) || '0.00'}</p>
@@ -367,14 +367,14 @@ const Mechanic = ({ mechanicId = 1 }) => {
 
                                                 {job.notifiedCost && (
                                                     <div className="notification-badge success">
-                                                        <span>✅</span>
+                                                        <span></span>
                                                         <span>Cost ${job.notifiedCost} notified to manager</span>
                                                     </div>
                                                 )}
 
                                                 {job.diagnosisRecorded && (
                                                     <div className="notification-badge info">
-                                                        <span>📝</span>
+                                                        <span></span>
                                                         <span>Diagnosis recorded: {job.diagnosisRecorded}</span>
                                                     </div>
                                                 )}
@@ -387,7 +387,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
                                                         className="action-btn complete-btn"
                                                         onClick={() => markJobCompleted(job.id)}
                                                     >
-                                                        ✅ Mark as Complete
+                                                         Mark as Complete
                                                     </button>
 
                                                     {selectedJob === job.id ? (
@@ -420,7 +420,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
                                                             className="action-btn diagnosis-btn"
                                                             onClick={() => setSelectedJob(job.id)}
                                                         >
-                                                            🔍 Record Diagnosis
+                                                             Record Diagnosis
                                                         </button>
                                                     )}
 
@@ -454,7 +454,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
                                                             className="action-btn notify-cost-btn"
                                                             onClick={() => setSelectedJob(`cost-${job.id}`)}
                                                         >
-                                                            💰 Notify Cost to Manager
+                                                             Notify Cost to Manager
                                                         </button>
                                                     )}
                                                 </div>
@@ -462,7 +462,7 @@ const Mechanic = ({ mechanicId = 1 }) => {
 
                                             {isCompleted && job.completedAt && (
                                                 <div className="completion-badge">
-                                                    <span>🎉</span>
+                                                    <span></span>
                                                     <p>Completed on {job.completedAt}</p>
                                                 </div>
                                             )}
