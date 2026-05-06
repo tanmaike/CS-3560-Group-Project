@@ -10,6 +10,7 @@ const Manager = () => {
 
     const [activeTab,      setActiveTab]      = useState('active');
     const [searchTerm,     setSearchTerm]     = useState('');
+    const [sortBy,        setSortBy]        = useState('jobId'); // jobId, pending, assigned, quoted, terminated
     const [selectedMechId, setSelectedMechId] = useState(null);
     const [quoteJobId,     setQuoteJobId]     = useState(null);
     const [quoteInput,     setQuoteInput]     = useState('');
@@ -145,16 +146,33 @@ const Manager = () => {
         terminated: jobs.filter((j) => j.jobStatus === 'terminated').length,
     };
 
+    const statusOrder = { pending: 1, assigned: 2, quoted: 3, terminated: 4 };
+
+    const sortJobs = (jobList) => {
+        if (sortBy === 'jobId') {
+            return [...jobList].sort((a, b) => a.jobId - b.jobId);
+        }
+        // Sort by status order
+        return [...jobList].sort((a, b) => {
+            const statusA = statusOrder[a.jobStatus] || 999;
+            const statusB = statusOrder[b.jobStatus] || 999;
+            if (statusA !== statusB) return statusA - statusB;
+            return a.jobId - b.jobId; // Tie-breaker by job ID
+        });
+    };
+
     const activeJobs     = jobs.filter((j) => j.jobStatus !== 'terminated');
     const terminatedJobs = jobs.filter((j) => j.jobStatus === 'terminated');
-    const displayedJobs  = (activeTab === 'active' ? activeJobs : terminatedJobs)
-        .filter((j) =>
-            searchTerm === '' ||
-            String(j.jobId).includes(searchTerm) ||
-            j.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            String(j.vehicleId).includes(searchTerm) ||
-            j.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+    const displayedJobs  = sortJobs(
+        (activeTab === 'active' ? activeJobs : terminatedJobs)
+            .filter((j) =>
+                searchTerm === '' ||
+                String(j.jobId).includes(searchTerm) ||
+                j.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                String(j.vehicleId).includes(searchTerm) ||
+                j.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase())
+            )
+    );
 
     return (
         <div className="manager-portal">
@@ -279,6 +297,17 @@ const Manager = () => {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
+                        </div>
+
+                        <div className="sort-wrapper">
+                            <select
+                                className="sort-select-manager"
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value)}
+                            >
+                                <option value="jobId">Sort by Job ID</option>
+                                <option value="status">Sort by Status</option>
+                            </select>
                         </div>
                     </div>
                 </div>
