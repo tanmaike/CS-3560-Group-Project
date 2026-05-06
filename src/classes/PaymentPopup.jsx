@@ -14,6 +14,18 @@ function PaymentPopup({ balanceDue, invoiceAmount, invoiceId, isPayAll, onClose,
     });
     const [selectedPreset, setSelectedPreset] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [useSavedCard, setUseSavedCard] = useState(true);
+    const [cardNumber, setCardNumber] = useState('');
+    const [cardExpiry, setCardExpiry] = useState('');
+    const [cardCvv, setCardCvv] = useState('');
+
+    // Fake saved credit card
+    const savedCard = {
+        number: '4532 1234 5678 9010',
+        expiry: '12/25',
+        cvv: '123',
+        holderName: 'John Doe'
+    };
 
     const isInvoicePayment = !!invoiceId;
 
@@ -138,6 +150,82 @@ function PaymentPopup({ balanceDue, invoiceAmount, invoiceId, isPayAll, onClose,
                             Amount exceeds balance of ${displayBalance.toFixed(2)}
                         </div>
                     )}
+
+                    <div className="popup-divider">
+                        <span className="popup-divider-line" />
+                        <span className="popup-divider-text">payment method</span>
+                        <span className="popup-divider-line" />
+                    </div>
+
+                    <div className="popup-field">
+                        <label className="popup-label">
+                            <input
+                                type="radio"
+                                name="payment-method"
+                                checked={useSavedCard}
+                                onChange={() => setUseSavedCard(true)}
+                            />
+                            {' '}Use Saved Card
+                        </label>
+                        {useSavedCard && (
+                            <div className="popup-saved-card">
+                                <p className="popup-card-info">
+                                    {savedCard.holderName} • {savedCard.number.slice(-4)}
+                                </p>
+                                <p className="popup-card-expiry">
+                                    Expires {savedCard.expiry}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="popup-field">
+                        <label className="popup-label">
+                            <input
+                                type="radio"
+                                name="payment-method"
+                                checked={!useSavedCard}
+                                onChange={() => setUseSavedCard(false)}
+                            />
+                            {' '}Enter New Card
+                        </label>
+                        {!useSavedCard && (
+                            <>
+                                <input
+                                    type="text"
+                                    className="popup-input"
+                                    placeholder="Card Number"
+                                    value={cardNumber}
+                                    onChange={(e) => setCardNumber(e.target.value.replace(/\s+/g, '').slice(0, 16))}
+                                    maxLength="16"
+                                />
+                                <div className="popup-card-row">
+                                    <input
+                                        type="text"
+                                        className="popup-input popup-card-expiry-input"
+                                        placeholder="MM/YY"
+                                        value={cardExpiry}
+                                        onChange={(e) => {
+                                            let val = e.target.value.replace(/\D/g, '');
+                                            if (val.length >= 2) {
+                                                val = val.slice(0, 2) + '/' + val.slice(2, 4);
+                                            }
+                                            setCardExpiry(val);
+                                        }}
+                                        maxLength="5"
+                                    />
+                                    <input
+                                        type="text"
+                                        className="popup-input popup-card-cvv-input"
+                                        placeholder="CVV"
+                                        value={cardCvv}
+                                        onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, '').slice(0, 3))}
+                                        maxLength="3"
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </div>
 
                     <div className="popup-summary">
                         <div className="popup-summary-row">
